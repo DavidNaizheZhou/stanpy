@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use imwspy in a project::
+To use stanpy in a project::
 
-    import imwspy
+    import stanpy

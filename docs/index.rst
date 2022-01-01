@@ -1,4 +1,4 @@
-Welcome to imwspy's documentation!
+Welcome to stanpy's documentation!
 ======================================
 
 .. toctree::
