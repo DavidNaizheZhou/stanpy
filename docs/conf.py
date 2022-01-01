@@ -17,12 +17,12 @@
 # relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 #
+
+
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-
 import stanpy
-
 # -- General configuration ---------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -101,6 +101,44 @@ html_static_path = ['_static']
 # html_logo = "_static/img/imws-logo_tu.png"
 html_logo = "_static/img/stanpy_logo.png"
 
+html_theme_options = {
+    "favicons": [
+      {
+         "rel": "icon",
+         "sizes": "16x16",
+         "href": "_static/img/stanpy_logo.png",
+      },
+      {
+         "rel": "icon",
+         "sizes": "32x32",
+         "href": "favicon-32x32.png",
+      },
+      {
+         "rel": "apple-touch-icon",
+         "sizes": "180x180",
+         "href": "apple-touch-icon-180x180.png"
+      },
+   ],
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/<your-org>/<your-repo>",
+            "icon": "fab fa-github-square",
+        },
+        {
+            "name": "GitLab",
+            "url": "https://gitlab.tuwien.ac.at/",
+            "icon": "fab fa-gitlab",
+        },
+        {
+            "name": "PyPi",
+            "url": "https://pypi.org/project/stanpy/",
+            "icon": "fab fa-python",
+        },
+    ],
+ 
+}
+
 # -- Options for HTMLHelp output ---------------------------------------
 
 # Output file base name for HTML help builder.
@@ -161,6 +199,3 @@ texinfo_documents = [
      'One line description of project.',
      'Miscellaneous'),
 ]
-
-
-
