@@ -7,7 +7,8 @@ Welcome to stanpy's documentation!
 
    readme
    installation
-   usage
+   user_guide
+   api_reference
    modules
    contributing
    authors
