@@ -19,9 +19,11 @@
 #
 
 
+
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
+
 import stanpy
 # -- General configuration ---------------------------------------------
 
@@ -31,7 +33,7 @@ import stanpy
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode','sphinx.ext.autosummary','jupyter_sphinx']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -103,22 +105,22 @@ html_logo = "_static/img/stanpy_logo.png"
 
 html_theme_options = {
     "favicons": [
-      {
-         "rel": "icon",
-         "sizes": "16x16",
-         "href": "_static/img/stanpy_logo.png",
-      },
-      {
-         "rel": "icon",
-         "sizes": "32x32",
-         "href": "favicon-32x32.png",
-      },
-      {
-         "rel": "apple-touch-icon",
-         "sizes": "180x180",
-         "href": "apple-touch-icon-180x180.png"
-      },
-   ],
+        {
+            "rel": "icon",
+            "sizes": "16x16",
+            "href": "_static/img/stanpy_logo.png",
+        },
+        {
+            "rel": "icon",
+            "sizes": "32x32",
+            "href": "favicon-32x32.png",
+        },
+        {
+            "rel": "apple-touch-icon",
+            "sizes": "180x180",
+            "href": "apple-touch-icon-180x180.png"
+        },
+    ],
     "icon_links": [
         {
             "name": "GitHub",
@@ -136,7 +138,7 @@ html_theme_options = {
             "icon": "fab fa-python",
         },
     ],
- 
+
 }
 
 # -- Options for HTMLHelp output ---------------------------------------

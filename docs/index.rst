@@ -2,16 +2,14 @@ Welcome to stanpy's documentation!
 ======================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: stanpy Documentation:
 
    readme
    installation
-   user_guide
+   user_guide/index
    api_reference
-   modules
    contributing
-   authors
    history
 
 Indices and tables
