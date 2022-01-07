@@ -66,7 +66,7 @@ release = stanpy.__version__
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "ger"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -170,34 +170,34 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass
 # [howto, manual, or own class]).
-latex_documents = [
-    (master_doc, 'stanpy.tex',
-     'stanpy Documentation',
-     'David Zhou', 'manual'),
-]
+# latex_documents = [
+    # (master_doc, 'stanpy.tex',
+     # 'stanpy Documentation',
+     # 'David Zhou', 'manual'),
+# ]
 
 
-# -- Options for manual page output ------------------------------------
+-- Options for manual page output ------------------------------------
 
-# One entry per manual page. List of tuples
-# (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'stanpy',
-     'stanpy Documentation',
-     [author], 1)
-]
+One entry per manual page. List of tuples
+(source start file, name, description, authors, manual section).
+# man_pages = [
+    # (master_doc, 'stanpy',
+     # 'stanpy Documentation',
+     # [author], 1)
+# ]
 
 
-# -- Options for Texinfo output ----------------------------------------
+-- Options for Texinfo output ----------------------------------------
 
-# Grouping the document tree into Texinfo files. List of tuples
-# (source start file, target name, title, author,
-#  dir menu entry, description, category)
-texinfo_documents = [
-    (master_doc, 'stanpy',
-     'stanpy Documentation',
-     author,
-     'stanpy',
-     'One line description of project.',
-     'Miscellaneous'),
-]
+Grouping the document tree into Texinfo files. List of tuples
+(source start file, target name, title, author,
+ dir menu entry, description, category)
+# texinfo_documents = [
+    # (master_doc, 'stanpy',
+     # 'stanpy Documentation',
+     # author,
+     # 'stanpy',
+     # 'One line description of project.',
+     # 'Miscellaneous'),
+# ]
