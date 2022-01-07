@@ -26,29 +26,13 @@ def test_content(response):
     # from bs4 import BeautifulSoup
     # assert 'GitHub' in BeautifulSoup(response.content).title.string
 
-def test_qs_rect_primitive() -> None:
-    """Cross Section Properties of a Rectangle with b and h with primitive inputs and """
+def test_qs_rect() -> None:
+    """Cross section Properties of a rectangle with b and h """
+    # primitives as inputs
     b = 0.2
     h = 0.3
-    qs_test = {
-        "a":b*h,
-        "iy": b*h**3/12,
-        "iz": b**3*h/12,
-        "iyz": 0,
-        "ys": b/2,
-        "zs":h/2,
-        "iy_main": b*h**3/12,
-        "iz_main": b**3*h/12
-    }
     qs = stp.qs(b,h,0,0)
-    assert qs == qs_test
-
-def test_cs_rect_array() -> None:
-    """Cross Section Properties of a Rectangle with b and h np.arrays as inputs"""
-    b = np.array([0.2])
-    h = np.array([0.3])
-    qs = stp.qs(b,h,0,0)
-    assert qs.a == b*h
+    assert qs["a"] == b*h
     assert qs.iy == b*h**3/12
     assert qs.iz == b**3*h/12
     assert qs.iyz == 0
@@ -57,11 +41,38 @@ def test_cs_rect_array() -> None:
     assert qs.iy_main == qs.iy
     assert qs.iz_main == qs.iz
 
-def test_cs_I() -> None:
-    b = np.array([b])
-    h = 0.3
+    # np.arrays as inputs
+    b = np.array([0.2])
+    h = np.array([0.3])
     qs = stp.qs(b,h,0,0)
-    assert qs.a == b*h
+    assert qs["a"] == b*h
+    assert qs["iy"] == b*h**3/12
+    assert qs["iz"] == b**3*h/12
+    assert qs["iyz"] == 0
+    assert qs["ys"] == b/2
+    assert qs["zs"] == h/2
+    assert qs["iy_main"] == b*h**3/12
+    assert qs["iz_main"] == b**3*h/12
+
+def test_cs_rect_array() -> None:
+    """Cross section Properties of a Rectangle with b and h np.arrays as inputs"""
+    b = np.array([0.2])
+    h = np.array([0.3])
+    qs = stp.qs(b,h,0,0)
+    assert qs["a"] == b*h
+    assert qs["iy"] == b*h**3/12
+    assert qs["iz"] == b**3*h/12
+    assert qs["iyz"] == 0
+    assert qs["ys"] == b/2
+    assert qs["zs"] == h/2
+    assert qs["iy_main"] == b*h**3/12
+    assert qs["iz_main"] == b**3*h/12
+
+def test_cs_I() -> None:
+    b = np.array([0.2])
+    h = np.array([0.3])
+    qs = stp.qs(b,h,0,0)
+    assert qs["a"] == b*h
     assert qs.iy == b*h**3/12
     assert qs.iz == b**3*h/12
     assert qs.iyz == 0
@@ -73,7 +84,7 @@ def test_cs_I() -> None:
 def test_mat() -> None:
     """check if all combinations of input paramaters return expected dict"""
 
-    stp.mat(E=3E10)
+    assert 0 == stp.mat(E=3E10)
 
 def test_command_line_interface():
     """Test the CLI."""

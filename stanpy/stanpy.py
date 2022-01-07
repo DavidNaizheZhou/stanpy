@@ -4,7 +4,7 @@ import numpy as np
 ###### Functions ############
 
 def qs(b:np.array,h:np.array,zsi:np.array,ysi:np.array) -> dict: 
-    return dict()
+    return {"a":b*h}
 
 def mat(E:float=None, G:float=None,I:float=None,A:float=None, EI:float=np.nan, GA:float=np.nan, EA:float=np.nan, qs:dict=dict()) -> dict:
     return dict()
