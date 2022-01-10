@@ -2,30 +2,53 @@
 User Guide
 ==========
 
-To use stanpy in a project::
+Verwende stanpy in einem Projekt mit::
 
-    import stanpy
+    import stanpy as stp
 
-What is StAnPy?
+Was ist stanpy?
 ---------------
-StAnPy is a fundamental package for structural analysis. 
+Stanpy ist ein fundamentales Package der Baustatik.
+Es soll Ingenieure unterstützen baustatische Problemstellungen zu untersuchen.
+Ziel ist es ein möglichst intuitives und fehlerresistentes bearbeiten der Problemstellungen nach traditionellen 
+Lösunsansätzen zu ermöglichen. Das Package soll modular aufgebaut sein, sodass es dem Detailierungsgrad einer
+Handstatik entsprechen kann (stanpy ist keine Blackbox).
 
-* Cross-Section Properties
-* Transfer relations for straight slender beams with linearly increasing/decreasing cross-sectional height
-* Transfer relations for straight beams with constant cross-sectional
+In einer ersten Phase werden folgende Features dokumentiert, getestet und implementiert:
 
-Examples
---------
+* Berechnung von Querschnittswerten
+* Übertragungsbeziehungen nach Theorie I Ordnung
+* Übertragungsbeziehungen mit veränderlicher Querschnittshöhe nach Theorie I Ordnung
+* Übertragungsbeziehungen nach Theorie II Ordnung
+* Drehwinkelverfahren nach Theorie I Ordnung
+* Drehwinkelverfahren mit veränderlicher Querschnittshöhe  nach Theorie I Ordnung
+* Drehwinkelverfahren nach Theorie II Ordnung
 
-This is a simple demonstration site to show off the features of the stanpy.
+Todo's:
+
+* Darstellung von Schnittgrößen
+* Darstellung von Verformungen
+* Kinematischer Verschiebungsplan/Geklappter Verschiebungsplan
+* Kraftgrößenverfahren
+* Dreimomentengleichung (mit Erweiterungen – Stabsehendrehwinkel, Auflagerverschiebungen)
+* Momentenfortleitung
+* Prinzip der virtuellen Verschiebungen
+* Allgemeines Verschiebungsgrößenverfahren! 
+* Fließgelenktheorie I. Ordnung
+* Traglastermittlung mit Hilfe der Traglastsätze
+* …
+
+
+
+Inhaltsverzeichnis
+------------------
 
 .. toctree::
     :maxdepth: 2
     :caption: User Guide
 
     cross_section
-    transfer_relation
-    demo
+    cross_section_height
 
 
 .. meta::

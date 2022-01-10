@@ -177,10 +177,10 @@ latex_elements = {
 # ]
 
 
--- Options for manual page output ------------------------------------
+# -- Options for manual page output ------------------------------------
 
-One entry per manual page. List of tuples
-(source start file, name, description, authors, manual section).
+# One entry per manual page. List of tuples
+# (source start file, name, description, authors, manual section).
 # man_pages = [
     # (master_doc, 'stanpy',
      # 'stanpy Documentation',
@@ -188,11 +188,11 @@ One entry per manual page. List of tuples
 # ]
 
 
--- Options for Texinfo output ----------------------------------------
+# -- Options for Texinfo output ----------------------------------------
 
-Grouping the document tree into Texinfo files. List of tuples
-(source start file, target name, title, author,
- dir menu entry, description, category)
+# Grouping the document tree into Texinfo files. List of tuples
+# (source start file, target name, title, author,
+#  dir menu entry, description, category)
 # texinfo_documents = [
     # (master_doc, 'stanpy',
      # 'stanpy Documentation',
