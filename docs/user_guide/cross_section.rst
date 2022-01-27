@@ -2,11 +2,13 @@
 *****************
 Querschnittswerte
 *****************
+.. Note:: 
+    todos: Abbildungen, Definition der Vektoren h und b, Funktion für I, H, HEB, HEA, ...
+
 In diesem Abschnitt werden die Querschnittswerte für verschieden zusammengesetzte Rechtecksquerschnitte berechnet.
 
 Rechtecksquerschnitte
 =====================
-Für einen einfachen Rechtecksquerschnitt kann die Breite oder Höhe als int und/oder float übergeben werden.
 ::
 
     import numpy as np
@@ -15,7 +17,7 @@ Für einen einfachen Rechtecksquerschnitt kann die Breite oder Höhe als int und
     b = 0.2 
     h = 0.4
     
-    results = stp.QS(b,h) # Iy, zs, Iz, ys, Iyz, Iy_main, Iz_main, A
+    cs_pros = stp.cs(b,h)
     
 
 Zusammengesetzte Rechtecksquerschnitte
@@ -32,15 +34,15 @@ sowie Schwerpunktsabstände in y- und z-Richtung in Listen oder Arrays zusammeng
     zsi = np.array([zsi1,zsi2,zsi3])
     ysi = np.array([ysi1,ysi2,ysi3])
     
-    results = stp.QS(b,h,zsi,ysi) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
+    cs_props = stp.cs(b,h,zsi,ysi)
 
 
-Vektor Matrix Notation 
+Matrix Vektor Notation 
 ======================
 In manchen Fällen kann es nützlich sein die Vektoren :math:`\vec{z_{si}}` und :math:`\vec{y_{si}}` 
 in Abhängigkeit der Vektoren :math:`\vec{h}` und :math:`\vec{b}` anzuschreiben. 
 Beispielsweise muss für einen Stab mit linear veränderlicher Höhe lediglich ein, von x Abhängiger, Eintrag
-im Vektor :math:`\vec{h}` eingetragen. Selbiges gilt auch für einen Stab mit linear veränderlicher Breite.
+im Vektor :math:`\vec{h}` eingetragen werden. Analog gilt das auch für einen Stab mit linear veränderlicher Breite.
 
 I - Querschnitt
 ---------------
@@ -56,9 +58,9 @@ Für einen Bezugspunkt an der Oberkante oder einen Bezugspunkt im Schwerpunkt de
                             1&1/2&0\\
                             1&1&1/2
                             \end{array}
-                            \right]\cdot\vec{h} \qquad
+                            \right]\cdot\vec{h} \quad \text{bzw.} \quad
     \vec{z_{si,SP}}=\left[\begin{array}{ccc}
-                        -1/2&1/2&0\\
+                        -1/2&-1/2&0\\
                         0&0&0\\
                         0&1/2&1/2
                         \end{array}
@@ -66,7 +68,7 @@ Für einen Bezugspunkt an der Oberkante oder einen Bezugspunkt im Schwerpunkt de
 
 Dabei sind die Ergebnisse, bis auf den Abstand zum Bezugspunkt, ident.
 
-(todo Skizze)::
+(todo Abbildung)::
 
     import numpy as np
     import stanpy as stp
@@ -81,8 +83,10 @@ Dabei sind die Ergebnisse, bis auf den Abstand zum Bezugspunkt, ident.
                    [0,0,0],
                    [0,1/2,1/2]).dot(h)   
 
-    results_OK = stp.QS(b,h,zsi_OK) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
-    results_SP = stp.QS(b,h,zsi_SP) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
+    cs_props_OK = stp.cs(b,h,zsi_OK) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
+    cs_props_SP = stp.cs(b,h,zsi_SP) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
+
+    (todo: prints)
  
 H - Querschnitt
 ---------------
@@ -161,7 +165,27 @@ Für Kastenquerschnitte ergibt sich die Matrix Vektor Multiplikation analog zu :
 Verstärkter - I Querschnitt
 ---------------------------
 (todo Skizze)::
-    todo
+
+    (todo: still a placeholer)
+    import numpy as np
+    import stanpy as stp
+
+    b = np.array([b1,b2,b3])
+    h = np.array([h1,h2,h3])
+
+    zsi = np.array([1/2,0,0,0], # Obergurt
+                   [1,1/2,0,0], # Steg links
+                   [1,0,1/2,0], # Steg rechts
+                   [1,0,1,1/2]) # Untergrut
+                   .dot(h)   
+    
+    ysi = np.array([1/2,0,0,0], # Obergurt
+                   [0,1/2,0,0], # Steg links
+                   [1,0,-1/2,0], # Steg rechts
+                   [0,0,0,1/2]) # Untergrut
+                   .dot(b)   
+
+    results = stp.QS(b,h,zsi,ysi) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
 
 .. meta::
     :description lang=de:

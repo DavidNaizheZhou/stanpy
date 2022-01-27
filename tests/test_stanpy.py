@@ -26,7 +26,7 @@ def test_content(response):
     # from bs4 import BeautifulSoup
     # assert 'GitHub' in BeautifulSoup(response.content).title.string
 
-def test_qs_rect() -> None:
+def test_cs_rect() -> None:
     """Cross section Properties of a rectangle with b and h """
     # primitives as inputs
     b = 0.2
