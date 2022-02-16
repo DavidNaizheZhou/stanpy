@@ -48,8 +48,10 @@ Inhaltsverzeichnis
     :caption: User Guide
 
     cross_section
-    cross_section_height
+    .. cross_section_height
     transfer_relation
+    transfer_relation_II
+    transfer_relations_constant_slab_I_II
 
 
 .. meta::
