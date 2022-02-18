@@ -1,37 +1,56 @@
-======
-STANPY
-======
-
-
 .. image:: https://img.shields.io/pypi/v/stanpy.svg
         :target: https://pypi.python.org/pypi/stanpy
-
-.. image:: https://img.shields.io/travis/davidnaizhezhou/stanpy.svg
-        :target: https://travis-ci.com/davidnaizhezhou/stanpy
 
 .. image:: https://readthedocs.org/projects/stanpy/badge/?version=latest
         :target: https://stanpy.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
-
+========
+Overview
+========
 
 Structural analysis libary in python
 
+* Free software: MIT license
 
-* Free software: GNU General Public License v3
-* Documentation: https://stanpy.readthedocs.io.
+Installation
+============
+
+::
+
+    pip install stanpy
+
+You can also install the in-development version with::
+
+    pip install git+ssh://git@https://github.com/davidnaizhezhou/stanpy@main
+
+Documentation
+=============
 
 
-Features
---------
+https://python-stanpy.readthedocs.io/
 
-* TODO
-   * test
 
-Credits
--------
+Development
+===========
 
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+To run all the tests run::
 
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+    tox
+
+Note, to combine the coverage data from all the tox environments run:
+
+.. list-table::
+    :widths: 10 90
+    :stub-columns: 1
+
+    - - Windows
+      - ::
+
+            set PYTEST_ADDOPTS=--cov-append
+            tox
+
+    - - Other
+      - ::
+
+            PYTEST_ADDOPTS=--cov-append tox

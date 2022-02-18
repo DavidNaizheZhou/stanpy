@@ -1,128 +1,87 @@
-.. highlight:: shell
-
 ============
 Contributing
 ============
 
-Contributions are welcome, and they are greatly appreciated! Every little bit
-helps, and credit will always be given.
+Contributions are welcome, and they are greatly appreciated! Every
+little bit helps, and credit will always be given.
 
-You can contribute in many ways:
+Bug reports
+===========
 
-Types of Contributions
-----------------------
+When `reporting a bug <https://https://github.com/davidnaizhezhou/stanpy/teaVeloper/python-stanpy-dev/issues>`_ please include:
 
-Report Bugs
-~~~~~~~~~~~
+    * Your operating system name and version.
+    * Any details about your local setup that might be helpful in troubleshooting.
+    * Detailed steps to reproduce the bug.
 
-Report bugs at https://github.com/davidnaizhezhou/stanpy/issues.
+Documentation improvements
+==========================
 
-If you are reporting a bug, please include:
-
-* Your operating system name and version.
-* Any details about your local setup that might be helpful in troubleshooting.
-* Detailed steps to reproduce the bug.
-
-Fix Bugs
-~~~~~~~~
-
-Look through the GitHub issues for bugs. Anything tagged with "bug" and "help
-wanted" is open to whoever wants to implement it.
-
-Implement Features
-~~~~~~~~~~~~~~~~~~
-
-Look through the GitHub issues for features. Anything tagged with "enhancement"
-and "help wanted" is open to whoever wants to implement it.
-
-Write Documentation
-~~~~~~~~~~~~~~~~~~~
-
-stanpy could always use more documentation, whether as part of the
-official stanpy docs, in docstrings, or even on the web in blog posts,
+stanpy-dev could always use more documentation, whether as part of the
+official stanpy-dev docs, in docstrings, or even on the web in blog posts,
 articles, and such.
 
-Submit Feedback
-~~~~~~~~~~~~~~~
+Feature requests and feedback
+=============================
 
-The best way to send feedback is to file an issue at https://github.com/davidnaizhezhou/stanpy/issues.
+The best way to send feedback is to file an issue at https://https://github.com/davidnaizhezhou/stanpy/teaVeloper/python-stanpy-dev/issues.
 
 If you are proposing a feature:
 
 * Explain in detail how it would work.
 * Keep the scope as narrow as possible, to make it easier to implement.
-* Remember that this is a volunteer-driven project, and that contributions
-  are welcome :)
+* Remember that this is a volunteer-driven project, and that code contributions are welcome :)
 
-Get Started!
-------------
+Development
+===========
 
-Ready to contribute? Here's how to set up `stanpy` for local development.
+To set up `python-stanpy-dev` for local development:
 
-1. Fork the `stanpy` repo on GitHub.
+1. Fork `python-stanpy-dev <https://https://github.com/davidnaizhezhou/stanpy/teaVeloper/python-stanpy-dev>`_
+   (look for the "Fork" button).
 2. Clone your fork locally::
 
-    $ git clone git@github.com:your_name_here/stanpy.git
+    git clone git@https://github.com/davidnaizhezhou/stanpy:YOURGITHUBNAME/python-stanpy-dev.git
 
-3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development::
+3. Create a branch for local development::
 
-    $ mkvirtualenv stanpy
-    $ cd stanpy/
-    $ python setup.py develop
-
-4. Create a branch for local development::
-
-    $ git checkout -b name-of-your-bugfix-or-feature
+    git checkout -b name-of-your-bugfix-or-feature
 
    Now you can make your changes locally.
 
-5. When you're done making changes, check that your changes pass flake8 and the
-   tests, including testing other Python versions with tox::
+4. When you're done making changes run all the checks and docs builder with `tox <https://tox.readthedocs.io/en/latest/install.html>`_ one command::
 
-    $ flake8 stanpy tests
-    $ python setup.py test or pytest
-    $ tox
+    tox
 
-   To get flake8 and tox, just pip install them into your virtualenv.
+5. Commit your changes and push your branch to GitHub::
 
-6. Commit your changes and push your branch to GitHub::
+    git add .
+    git commit -m "Your detailed description of your changes."
+    git push origin name-of-your-bugfix-or-feature
 
-    $ git add .
-    $ git commit -m "Your detailed description of your changes."
-    $ git push origin name-of-your-bugfix-or-feature
-
-7. Submit a pull request through the GitHub website.
+6. Submit a pull request through the GitHub website.
 
 Pull Request Guidelines
 -----------------------
 
-Before you submit a pull request, check that it meets these guidelines:
+If you need some code review or feedback while you're developing the code just make the pull request.
 
-1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put
-   your new functionality into a function with a docstring, and add the
-   feature to the list in README.rst.
-3. The pull request should work for Python 3.5, 3.6, 3.7 and 3.8, and for PyPy. Check
-   https://travis-ci.com/davidnaizhezhou/stanpy/pull_requests
-   and make sure that the tests pass for all supported Python versions.
+For merging, you should:
+
+1. Include passing tests (run ``tox``).
+2. Update documentation when there's new API, functionality etc.
+3. Add a note to ``CHANGELOG.rst`` about the changes.
+4. Add yourself to ``AUTHORS.rst``.
+
+
 
 Tips
 ----
 
 To run a subset of tests::
 
-$ pytest tests.test_stanpy
+    tox -e envname -- pytest -k test_myfeature
 
+To run all the test environments in *parallel*::
 
-Deploying
----------
-
-A reminder for the maintainers on how to deploy.
-Make sure all your changes are committed (including an entry in HISTORY.rst).
-Then run::
-
-$ bump2version patch # possible: major / minor / patch
-$ git push
-$ git push --tags
-
-Travis will then deploy to PyPI if tests pass.
+    tox -p auto

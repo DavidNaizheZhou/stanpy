@@ -2,6 +2,9 @@
 Credits
 =======
 
+Authors
+=======
+
 Development Lead
 ----------------
 
