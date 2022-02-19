@@ -1,5 +1,5 @@
 Welcome to stanpy's documentation!
-======================================
+==================================
 
 .. toctree::
    :maxdepth: 1
@@ -11,6 +11,8 @@ Welcome to stanpy's documentation!
    api_reference
    contributing
    history
+   authors
+   changelog
 
 Indices and tables
 ==================

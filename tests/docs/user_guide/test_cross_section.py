@@ -1,51 +1,36 @@
-
-*****************
-Querschnittswerte
-*****************
-.. Note:: 
-    todos: Abbildungen, Definition der Vektoren h und b, Funktion für I, H, HEB, HEA, ...
-
-In diesem Abschnitt werden die Querschnittswerte für verschieden zusammengesetzte Rechtecksquerschnitte berechnet.
-
-EX01 Rechtecksquerschnitt
-=========================
-
-.. jupyter-execute::
+def test_ex_01():
 
     import numpy as np
     import stanpy as stp
 
-    b = 0.2 
+    b = 0.2
     h = 0.4
-    
-    cs_props = stp.cs(b=b,h=h)
 
-    print(cs_props)
+    cs_props = stp.cs(b=b, h=h)
 
-    
+    print("I_y = ", cs_props["I_y"])
+    print("I_z = ", cs_props["I_z"])
+    print("A = ", cs_props["A"])
+    print("z_s = ", cs_props["z_s"])
 
-EX02 Zusammengesetzter Rechtecksquerschnitt
-===========================================
 
-.. jupyter-execute::
+def test_ex_02():
 
     import numpy as np
     import stanpy as stp
 
     s, t = 0.012, 0.02  # m
-    b, h = 0.5, 39.4
+    b, h = 0.5, 0.39
     b_v = np.array([b, s, b])
     h_v = np.array([t, h - 2 * t, t])
-    zsi_v = np.array([t / 2, t + (h - 2 * t) / 2, t + (h - 2 * t) + t / 2])  # von OK
+    z_siv = np.array([t / 2, t + (h - 2 * t) / 2, t + (h - 2 * t) + t / 2])  # von OK
 
-    cs_props = stp.cs(b=b_v, h=h_v, zsi=zsi_v)
+    cs_props = stp.cs(b=b_v, h=h_v, z_si=z_siv)
 
     print(cs_props)
 
-EX03 I-Querschnitt
-==================
 
-.. jupyter-execute::
+def test_ex_03():
 
     import numpy as np
     import stanpy as stp
@@ -59,14 +44,11 @@ EX03 I-Querschnitt
 
     print(cs_props)
 
-EX04 H-Querschnitt
-==================
 
-.. jupyter-execute::
+def test_ex_04():
 
     import numpy as np
     import stanpy as stp
-    import matplotlib.pyplot as plt
 
     s, t = 0.012, 0.02  # m
     b, h = 0.5, 0.39
@@ -88,15 +70,8 @@ EX04 H-Querschnitt
 
     print(cs_props)
 
-    fig,ax =plt.subplots()
-    ax.plot([1,2,3,4],[5,2,3,4])
-    plt.show()
 
-
-EX05 Kasten-Querschnitt
-=======================
-
-.. jupyter-execute::
+def test_ex_05():
 
     import numpy as np
     import stanpy as stp
@@ -133,10 +108,8 @@ EX05 Kasten-Querschnitt
 
     print(cs_props)
 
-EX06 - Verstärkter I Querschnitt
-================================
 
-.. jupyter-execute::
+def test_ex_06():
 
     import numpy as np
     import stanpy as stp
@@ -167,6 +140,5 @@ EX06 - Verstärkter I Querschnitt
     print(cs_props)
 
 
-.. meta::
-    :description lang=de:
-        Examples of document structure features in pydata-sphinx-theme.
+if __name__ == "__main__":
+    test_ex_06()

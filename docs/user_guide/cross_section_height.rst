@@ -1,197 +1,181 @@
 
-***************************************************
-Querschnittswerte für Stäbe mit veränderlicher Höhe
-***************************************************
+**********************************************************************
+Querschnittswerte für Stäbe mit veränderlichen Querschnittsabmessungen
+**********************************************************************
+
 .. Note:: 
-    todos: Abbildungen, Definition der Vektoren h und b, Struktur
+    todos: Abbildungen, Definition der Vektoren h und b, Funktion für I, H, HEB, HEA, ...
 
-In diesem Abschnitt werden die Querschnittswerte für verschieden zusammengesetzte Rechtecksquerschnitte mit veränderlicher Höhe berechnet.
+In diesem Abschnitt werden die Querschnittswerte für verschieden zusammengesetzte Rechtecksquerschnitte mit veränderlichen Querschnittsabmessungen berechnet.
 
-Rechtecksquerschnitte mit veränderlicher Höhe
-=============================================
-::
+EX01 Rechtecksquerschnitt
+=========================
+
+.. jupyter-execute::
+
+    import sympy as sym
+    import stanpy as stp
+    import matplotlib.pyplot as plt
+
+    x = sym.Symbol("x")
+    l = 4  # m
+    b, ha, hb = 0.2, 0.3, 0.4  # m
+    hx = ha + (hb - ha) / l * x  # m
+
+    cs_pros = stp.cs(b=b, h=hx)
+
+    print(cs_pros)
+
+    fig, ax = plt.subplots(figsize=(8, 2))
+
+    s = {"l": l}
+    stp.plot_system(ax, s)
+    plt.show()
+
+    
+
+EX02 Zusammengesetzter Rechtecksquerschnitt
+===========================================
+
+.. jupyter-execute::
 
     import numpy as np
     import stanpy as stp
 
-    b, ha, hb, hc = 0.2, 0.3, 0.3, 0.4 # m 
-    hx = ha+(hb-ha)/l*x # m 
-    
-    cs_pros = stp.cs(b, hx)
-    
+    s, t = 0.012, 0.02  # m
+    b, h = 0.5, 39.4
+    b_v = np.array([b, s, b])
+    h_v = np.array([t, h - 2 * t, t])
+    zsi_v = np.array([t / 2, t + (h - 2 * t) / 2, t + (h - 2 * t) + t / 2])  # von OK
 
-Zusammengesetzte Rechtecksquerschnitte mit veränderlicher Höhe
-==============================================================
-Für zusammengesetzte Rechtecksquerschnitte müssen die jeweiligen Breiten, Höhen 
-sowie Schwerpunktsabstände in y- und z-Richtung in Listen oder Arrays zusammengefasst werden. 
-::
+    cs_props = stp.cs(b=b_v, h=h_v, zsi=zsi_v)
 
-    import numpy as np
-    import stanpy as stp
+    print(cs_props)
 
-    ha, hb, hc = 0.2, 0.3, 0.3, 0.4 # m 
-    hx = ha+(hb-ha)/l*x # m 
+EX03 I-Querschnitt
+==================
 
-    b = np.array([b1,b2,b3])
-    h = np.array([h1,hx,h3])
-    zsi = np.array([zsi1,zsi2,zsi3])
-    ysi = np.array([ysi1,ysi2,ysi3])
-    
-    cs_props = stp.cs(b,h,zsi,ysi)
-
-
-Matrix Vektor Notation 
-======================
-In manchen Fällen kann es nützlich sein die Vektoren :math:`\vec{z_{si}}` und :math:`\vec{y_{si}}` 
-in Abhängigkeit der Vektoren :math:`\vec{h}` und :math:`\vec{b}` anzuschreiben. 
-Beispielsweise muss für einen Stab mit linear veränderlicher Höhe lediglich ein, von x Abhängiger, Eintrag
-im Vektor :math:`\vec{h}` eingetragen werden. Analog gilt das auch für einen Stab mit linear veränderlicher Breite.
-
-I - Querschnitt
----------------
-Für einen I-Querschnitt kann der Vektor :math:`\vec{z_{si}}` über eine Matrix Vektor Multiplikation, 
-in Abhängigkeit von :math:`\vec{h}` errechnet werden. 
-Für einen Bezugspunkt an der Oberkante oder einen Bezugspunkt im Schwerpunkt des Querschnitts ergeben sich:
-
-.. math::
-    :label: eq-i-querschnitt
-
-    \vec{z_{si,OK}}=\left[\begin{array}{ccc}
-                            1/2&0&0\\
-                            1&1/2&0\\
-                            1&1&1/2
-                            \end{array}
-                            \right]\cdot\vec{h} \quad \text{bzw.} \quad
-    \vec{z_{si,SP}}=\left[\begin{array}{ccc}
-                        -1/2&-1/2&0\\
-                        0&0&0\\
-                        0&1/2&1/2
-                        \end{array}
-                        \right]\cdot\vec{h}
-
-Dabei sind die Ergebnisse, bis auf den Abstand zum Bezugspunkt, ident.
-
-(todo Abbildung)::
+.. jupyter-execute::
 
     import numpy as np
     import stanpy as stp
 
-    ha, hb, hc = 0.2, 0.3, 0.3, 0.4 # m 
-    hx = ha+(hb-ha)/l*x # m 
+    s, t = 0.012, 0.02  # m
+    b, h = 0.5, 0.39
+    b_v = np.array([b, s, b])
+    h_v = np.array([t, h - 2 * t, t])
 
-    b = np.array([b1,b2,b3])
-    h = np.array([h1,h2,h3])
-    zsi_OK = np.array([1/2,0,0],
-                   [1,1/2,0],
-                   [1,1,1/2]).dot(h)
+    cs_props = stp.cs(b=b_v, h=h_v)
 
-    zsi_SP = np.array([-1/2,-1/2,0],
-                   [0,0,0],
-                   [0,1/2,1/2]).dot(h)   
+    print(cs_props)
 
-    cs_props_OK = stp.cs(b,h,zsi_OK) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
-    cs_props_SP = stp.cs(b,h,zsi_SP) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
+EX04 H-Querschnitt
+==================
 
-    (todo: prints)
- 
-H - Querschnitt
----------------
-Analog zu dem I-Querschnitt kann der Vektor :math:`\vec{y_{si}}` über eine Matrix Vektor Multiplikation, 
-in Abhängigkeit von :math:`\vec{b}` errechnet werden. 
-Für einen Bezugspunkt am Linken Rand des H-Querschnitts ergibt sich:
+.. jupyter-execute::
 
-.. math::
-    :label: eq-h-querschnitt
+    import numpy as np
+    import stanpy as stp
+    import matplotlib.pyplot as plt
 
-    \vec{y_{si}}=\left[\begin{array}{ccc}
-                            1/2&0&0\\
-                            1&1/2&0\\
-                            1&1&1/2
-                            \end{array}
-                            \right]\cdot\vec{b}
+    s, t = 0.012, 0.02  # m
+    b, h = 0.5, 0.39
 
-(todo Skizze)::
+    b_v = np.array([b, s, b])
+    h_v = np.array([t, h - 2 * t, t])
+
+    Ay = np.array(
+        [
+            [1 / 2, 0, 0],
+            [1, 1 / 2, 0],
+            [1, 1, 1 / 2],
+        ]
+    )
+
+    y_si = Ay.dot(b_v)
+
+    cs_props = stp.cs(b=b_v, h=h_v, y_si=y_si)
+
+    print(cs_props)
+
+    fig,ax =plt.subplots()
+    ax.plot([1,2,3,4],[5,2,3,4])
+    plt.show()
+
+
+EX05 Kasten-Querschnitt
+=======================
+
+.. jupyter-execute::
 
     import numpy as np
     import stanpy as stp
 
-    b = np.array([b1,b2,b3])
-    h = np.array([h1,h2,h3])
-    ysi = np.array([1/2,0,0], 
-                   [1,1/2,0],
-                   [1,1,1/2])
-                   .dot(b)   
-    
-    results = stp.QS(b=b,h=h,ysi=ysi) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
+    s, t = 0.012, 0.02  # m
+    b, h = 0.5, 39.4
 
-Kasten - Querschnitt
---------------------
-Für Kastenquerschnitte ergibt sich die Matrix Vektor Multiplikation analog zu :eq:`eq-i-querschnitt` und :eq:`eq-h-querschnitt`.
+    b_v = np.array([b, s, s, b])
+    h_v = np.array([t, h - 2 * t, h - 2 * t, t])
 
-.. math::
-    :label: eq-kasten-querschnitt
+    Az = np.array(
+        [
+            [1 / 2, 0, 0, 0],
+            [1, 1 / 2, 0, 0],
+            [1, 0, 1 / 2, 0],
+            [1, 0, 1, 1 / 2],
+        ]
+    )
 
-    \vec{z_{si}}=\left[\begin{array}{cccc}
-                            1/2&0&0&0\\
-                            1&1/2&0&0\\
-                            1&0&1/2&0\\
-                            1&0&1&1/2
-                            \end{array}
-                            \right]\cdot\vec{h} \qquad
-    \vec{y_{si}}=\left[\begin{array}{cccc}
-                            1/2&0&0&0\\
-                            0&1/2&0&0\\
-                            1&0&-1/2&0\\
-                            0&0&0&1/2
-                            \end{array}
-                            \right]\cdot\vec{b}
+    z_si = Az.dot(h_v)
 
-(todo Skizze)::
+    Ay = np.array(
+        [
+            [1 / 2, 0, 0, 0],
+            [0, 1 / 2, 0, 0],
+            [1, 0, -1 / 2, 0],
+            [0, 0, 0, 1 / 2],
+        ]
+    )
+
+    y_si = Ay.dot(b_v)
+
+    cs_props = stp.cs(b=b_v, h=h_v, z_si=z_si, y_si=y_si)
+
+    print(cs_props)
+
+EX06 - Verstärkter I Querschnitt
+================================
+
+.. jupyter-execute::
 
     import numpy as np
     import stanpy as stp
 
-    b = np.array([b1,b2,b3])
-    h = np.array([h1,h2,h3])
+    s, t = 0.012, 0.02  # m
+    b, h = 0.5, 0.39
+    h_i = 0.05
 
-    zsi = np.array([1/2,0,0,0], # Obergurt
-                   [1,1/2,0,0], # Steg links
-                   [1,0,1/2,0], # Steg rechts
-                   [1,0,1,1/2]) # Untergrut
-                   .dot(h)   
+    b_v = np.array([b, s, b, s, s, s, s])
+    h_v = np.array([t, h - 2 * t, t, h_i, h_i, h_i, h_i])
+
+    Az = np.array(
+        [
+            [1 / 2, 0, 0, 0, 0, 0, 0],
+            [1, 1 / 2, 0, 0, 0, 0, 0],
+            [1, 1, 1 / 2, 0, 0, 0, 0],
+            [1, 0, 0, 0, 1 / 2, 0, 0],
+            [1, 0, 0, 0, 0, 1 / 2, 0],
+            [1, 1, 0, 0, 0, -1 / 2, 0],
+            [1, 1, 0, 0, 0, 0, -1 / 2],
+        ]
+    )
+
+    z_si = Az.dot(h_v)
+
+    cs_props = stp.cs(b=b_v, h=h_v, z_si=z_si)
     
-    ysi = np.array([1/2,0,0,0], # Obergurt
-                   [0,1/2,0,0], # Steg links
-                   [1,0,-1/2,0], # Steg rechts
-                   [0,0,0,1/2]) # Untergrut
-                   .dot(b)   
+    print(cs_props)
 
-    results = stp.QS(b,h,zsi,ysi) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
-
-Verstärkter - I Querschnitt
----------------------------
-(todo Skizze)::
-
-    (todo: still a placeholer)
-    import numpy as np
-    import stanpy as stp
-
-    b = np.array([b1,b2,b3])
-    h = np.array([h1,h2,h3])
-
-    zsi = np.array([1/2,0,0,0], # Obergurt
-                   [1,1/2,0,0], # Steg links
-                   [1,0,1/2,0], # Steg rechts
-                   [1,0,1,1/2]) # Untergrut
-                   .dot(h)   
-    
-    ysi = np.array([1/2,0,0,0], # Obergurt
-                   [0,1/2,0,0], # Steg links
-                   [1,0,-1/2,0], # Steg rechts
-                   [0,0,0,1/2]) # Untergrut
-                   .dot(b)   
-
-    results = stp.QS(b,h,zsi,ysi) # Iy,zs, Iz, ys, Iyz, Iy_main, Iz_main, A
 
 .. meta::
     :description lang=de:

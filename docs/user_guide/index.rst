@@ -8,37 +8,8 @@ Verwende stanpy in einem Projekt mit::
 
 Was ist stanpy?
 ---------------
-Stanpy ist ein fundamentales Package der Baustatik.
-Es soll Ingenieure unterstützen baustatische Problemstellungen zu untersuchen.
-Ziel ist es ein möglichst intuitives und fehlerresistentes bearbeiten der Problemstellungen nach traditionellen 
-Lösunsansätzen zu ermöglichen. Das Package soll modular aufgebaut sein, sodass es dem Detailierungsgrad einer
-Handstatik entsprechen kann (stanpy ist keine Blackbox).
-
-In einer ersten Phase werden folgende Features dokumentiert, getestet und implementiert:
-
-* Berechnung von Querschnittswerten
-* Übertragungsbeziehungen nach Theorie I Ordnung
-* Übertragungsbeziehungen mit veränderlicher Querschnittshöhe nach Theorie I Ordnung
-* Übertragungsbeziehungen nach Theorie II Ordnung
-* Drehwinkelverfahren nach Theorie I Ordnung
-* Drehwinkelverfahren mit veränderlicher Querschnittshöhe  nach Theorie I Ordnung
-* Drehwinkelverfahren nach Theorie II Ordnung
-
-Todo's:
-
-* Darstellung von Schnittgrößen
-* Darstellung von Verformungen
-* Kinematischer Verschiebungsplan/Geklappter Verschiebungsplan
-* Kraftgrößenverfahren
-* Dreimomentengleichung (mit Erweiterungen – Stabsehendrehwinkel, Auflagerverschiebungen)
-* Momentenfortleitung
-* Prinzip der virtuellen Verschiebungen
-* Allgemeines Verschiebungsgrößenverfahren! 
-* Fließgelenktheorie I. Ordnung
-* Traglastermittlung mit Hilfe der Traglastsätze
-* …
-
-
+Stanpy ist (in einem ersten Schritt) ein kleines Package zur Lösung gerader Stabzüge mit konstanter oder linear veränderlichen Querschnittsabmessungen nach Theorie I. oder II. Ordnung.
+Gelöst werden die Problemstellung mithilfe des Reduktionsverfahrens der Baustatik.
 
 Inhaltsverzeichnis
 ------------------
