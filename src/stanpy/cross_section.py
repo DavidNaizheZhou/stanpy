@@ -44,7 +44,9 @@ def cs_old(**kwargs):
         cs_dict["ys"] = b / 2
         if _is_instance_sympy(cs_dict["Iy"]):
             cs_dict["Iy"] = cs_dict["Iy"].as_poly()
-            cs_dict["eta_y"] = np.flip((cs_dict["Iy"] / cs_dict["Iy"](0)).as_poly().coeffs())  # (todo) Ref - Stahlbauhandbuch P117 - Rubin
+            cs_dict["eta_y"] = np.flip(
+                (cs_dict["Iy"] / cs_dict["Iy"](0)).as_poly().coeffs()
+            )  # (todo) Ref - Stahlbauhandbuch P117 - Rubin
             cs_dict["gamma_y"] = (cs_dict["Iy"] / cs_dict["Iy"](0) * h.as_poly()(0) / h).as_poly().coeffs()
 
         if _is_instance_sympy(cs_dict["Iz"]):
@@ -89,6 +91,7 @@ def cs(**kwargs):
     poly_deg = kwargs.get("poly_deg", 3)
     poly_range = kwargs.get("poly_range", 12)
     validate = kwargs.get("validate", True)
+    development_mode = kwargs.get("development_mode", False)
 
     cs_params = {}
 
@@ -103,7 +106,12 @@ def cs(**kwargs):
         cs_params["I_y"] = b * h**3 / 12
         cs_params["I_z"] = b**3 * h / 12
 
-    elif isinstance(b, np.ndarray) and isinstance(h, np.ndarray) and isinstance(zsi, NoneType) and isinstance(ysi, NoneType):
+    elif (
+        isinstance(b, np.ndarray)
+        and isinstance(h, np.ndarray)
+        and isinstance(zsi, NoneType)
+        and isinstance(ysi, NoneType)
+    ):
         lower_triangle = np.tril(np.ones((b.size, b.size)))
         np.fill_diagonal(lower_triangle, 1 / 2)
 
@@ -111,13 +119,28 @@ def cs(**kwargs):
         ysi = np.zeros(lower_triangle.shape).dot(b)
         cs_params = cs_params_vec(b, h, zsi, ysi)
 
-    elif isinstance(b, np.ndarray) and isinstance(h, np.ndarray) and isinstance(zsi, np.ndarray) and isinstance(ysi, NoneType):
+    elif (
+        isinstance(b, np.ndarray)
+        and isinstance(h, np.ndarray)
+        and isinstance(zsi, np.ndarray)
+        and isinstance(ysi, NoneType)
+    ):
         cs_params = cs_params_vec(b, h, zsi, np.zeros(zsi.shape))
 
-    elif isinstance(b, np.ndarray) and isinstance(h, np.ndarray) and isinstance(ysi, np.ndarray) and isinstance(zsi, NoneType):
+    elif (
+        isinstance(b, np.ndarray)
+        and isinstance(h, np.ndarray)
+        and isinstance(ysi, np.ndarray)
+        and isinstance(zsi, NoneType)
+    ):
         cs_params = cs_params_vec(b, h, np.zeros(ysi.shape), ysi)
 
-    elif isinstance(b, np.ndarray) and isinstance(h, np.ndarray) and isinstance(ysi, np.ndarray) and isinstance(zsi, np.ndarray):
+    elif (
+        isinstance(b, np.ndarray)
+        and isinstance(h, np.ndarray)
+        and isinstance(ysi, np.ndarray)
+        and isinstance(zsi, np.ndarray)
+    ):
         cs_params = cs_params_vec(b, h, zsi, ysi)
 
     # convert symbolic expressions to poly
@@ -127,7 +150,9 @@ def cs(**kwargs):
             lam = sp.lambdify(sp.Symbol("x"), cs_params["I_y"])
             xvals = np.linspace(0, poly_range, 100)
             if np.max(np.abs(lam(xvals) - poly(xvals))) > 1e-9:
-                raise Exception("deviation of taylor polynomial to large - increase poly_deg (default:3) and set a proper poly_range")
+                raise Exception(
+                    "deviation of taylor polynomial to large - increase poly_deg (default:3) and set a proper poly_range"
+                )
         cs_params["I_y"] = poly
         cs_params["eta_y"] = np.flip(poly.c / poly(0))  # (todo) Ref - Stahlbauhandbuch P117 - Rubin
 
@@ -137,7 +162,9 @@ def cs(**kwargs):
             lam = sp.lambdify(sp.Symbol("x"), cs_params["I_z"])
             xvals = np.linspace(0, poly_range, 100)
             if np.max(np.abs(lam(xvals) - poly(xvals))) > 1e-9:
-                raise Exception("deviation of taylor polynomial to large - increase poly_deg (default:3) and set a proper poly_range")
+                raise Exception(
+                    "deviation of taylor polynomial to large - increase poly_deg (default:3) and set a proper poly_range"
+                )
         cs_params["I_z"] = poly
         cs_params["eta_z"] = np.flip(poly.c / poly(0))  # (todo) Ref - Stahlbauhandbuch P117 - Rubin
         # cs_params["gamma_y"]  = np.flip((cs_params["Iy"]/cs_params["Iy"](0)*h.as_poly()(0)/h).as_poly().coeffs())

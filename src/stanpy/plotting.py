@@ -1,6 +1,17 @@
 from __future__ import annotations
 
-__all__ = ["plot_system", "plot_M", "plot_Q", "plot_R", "plot_phi", "plot_w"]
+__all__ = [
+    "plot_system",
+    "plot_M",
+    "plot_V",
+    "plot_R",
+    "plot_phi",
+    "plot_w",
+    "plot_load",
+    "plot_roller_support",
+    "plot_fixed_support",
+    "plot_hinged_support",
+]
 
 import copy
 import os
@@ -10,6 +21,7 @@ from matplotlib.offsetbox import AnchoredOffsetbox
 from matplotlib.offsetbox import OffsetImage
 from matplotlib.patches import PathPatch
 from matplotlib.patches import Rectangle
+from matplotlib.markers import MarkerStyle
 from matplotlib.path import Path
 from PIL import Image
 
@@ -66,7 +78,11 @@ load_path = Path(verts, codes)
 
 
 def watermark(ax, watermark_pos=4):
-    img = Image.open(os.path.join("src", "stanpy", "static", "stanpy_logo_2-removebg.png"))
+    if "user_guide" in os.listdir():
+        img = Image.open(os.path.join("user_guide", "static", "stanpy_logo_2-removebg.png"))
+    else:
+        img = Image.open(os.path.join("src", "stanpy", "static", "stanpy_logo_2-removebg.png"))
+
     width = ax.bbox.xmax - ax.bbox.xmin
     wm_width = int(width / 16)  # make the watermark 1/4 of the figure size
     scaling = wm_width / float(img.size[0])
@@ -123,6 +139,17 @@ def plot_roller_support(ax, x, y, **kwargs):
         edgecolors="black",
         facecolors="white",
         zorder=2,
+    )
+
+
+def plot_roller_support_half(ax, x, y, **kwargs):
+    ax.scatter(
+        [x],
+        [y],
+        marker=versch_auflager,
+        s=30**2,
+        edgecolors="black",
+        facecolors="white",
     )
 
 
@@ -249,6 +276,8 @@ def plot_system(ax, *args, **kwargs):
                     plot_fixed_support(ax, xi, yi, "left")
                 elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["M", "V"]]):
                     pass
+                elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w"]]):
+                    plot_roller_support_half(ax, xi, yi, hinge_size=hinge_size)
                 elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["M"]]):
                     plot_hinge(ax, xi, yi, hinge_size=hinge_size)
 
@@ -261,6 +290,8 @@ def plot_system(ax, *args, **kwargs):
                     plot_fixed_support(ax, xk, yk, "right")
                 elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["M", "V"]]):
                     pass
+                elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["w"]]):
+                    plot_roller_support_half(ax, xk, yk, hinge_size=hinge_size)
                 elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["M"]]):
                     plot_hinge(ax, xk, yk, hinge_size=hinge_size)
 
@@ -281,17 +312,15 @@ def plot_load(ax, *args, **kwargs):
 
     q_offset = kwargs.pop("q_offset", 0)
     P_offset = kwargs.pop("P_offset", 0)
+    scale = kwargs.pop("scale", 1)
     offset0_positiv = offset_positiv = copy.copy(kwargs.pop("offset", 0.3))
     offset0_negativ = offset_negativ = -copy.copy(kwargs.pop("offset", 0.3))
     q_array = np.zeros(len(args))
-    p_array = np.zeros(len(args))
     for i, s in enumerate(args):
         if "q" in s.keys():
             q_array[i] = s["q"]
-        if "P" in s.keys():
-            p_array[i] = s["P"][0]
-
-    for s in args:
+    for i, s in enumerate(args):
+        P_array = stp.extract_P_from_beam(**s)
         l = s["l"]
         xk = xi + l
         yk = yi
@@ -319,26 +348,28 @@ def plot_load(ax, *args, **kwargs):
                     q_offset=q_offset,
                     **kwargs,
                 )
-        if "P" in s.keys():
+
+        if P_array.shape[0]:
             # plot_point_load(ax,xi,yi,s["P"][1],s["P"][0]/np.max(p_array))
-            if s["P"][0] > 0:
-                plot_point_load(
-                    ax,
-                    xi + s["P"][1],
-                    offset_positiv,
-                    s["P"][0] / np.max(p_array),
-                    P_offset=P_offset,
-                    **kwargs,
-                )
-            elif s["P"][0] < 0:
-                plot_point_load(
-                    ax,
-                    xi + s["P"][1],
-                    offset_negativ,
-                    -s["P"][0] / np.max(p_array),
-                    P_offset=P_offset,
-                    **kwargs,
-                )
+            for i in range(P_array.shape[0]):
+                if P_array[i][0] > 0:
+                    plot_point_load(
+                        ax,
+                        xi + P_array[i][1],
+                        offset_positiv,
+                        P_array[i][0] / 4 * scale,
+                        P_offset=P_offset,
+                        **kwargs,
+                    )
+                elif P_array[i][0] < 0:
+                    plot_point_load(
+                        ax,
+                        xi + P_array[i][1],
+                        offset_negativ,
+                        -P_array[i][0] / 4 * scale,
+                        P_offset=P_offset,
+                        **kwargs,
+                    )
         xi = xk
         yi = yk
         offset_positiv = offset0_positiv
@@ -380,8 +411,8 @@ def plot_load_distribution(ax, x, y, thickness, q_offset=0, **kwargs):
     ax.add_patch(PathPatch(path, facecolor=kwargs.pop("facecolor", "black"), **kwargs))
 
 
-def plot_Q(ax, x: np.ndarray = np.array([]), Qx: np.ndarray = np.array([]), **kwargs):
-    plot_R(ax=ax, x=x, Rx=Qx, **kwargs)
+def plot_V(ax, x: np.ndarray = np.array([]), Vx: np.ndarray = np.array([]), **kwargs):
+    plot_R(ax=ax, x=x, Rx=Vx, **kwargs)
 
 
 def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kwargs):
@@ -811,18 +842,19 @@ def plot_w(ax, x: np.ndarray = np.array([]), wx: np.ndarray = np.array([]), **kw
     scale = kwargs.pop("scale", 1)
     wx_plot[1:-1] = -wx / np.max(np.abs(wx)) * scale
     zorder = kwargs.pop("zorder", 2)
-    lw = kwargs.pop("lw", 1)
+    lw = kwargs.pop("lw", 2)
     c = kwargs.pop("c", "black")
-    ax.plot(x_plot, wx_plot, zorder=zorder, lw=lw, c=c, **kwargs)
+    linestyle = kwargs.pop("linestyle", "-")
+    ax.plot(x_plot, wx_plot, zorder=zorder, lw=lw, c=c, linestyle=linestyle, **kwargs)
 
 
-def plot_phi(ax, x: np.ndarray = np.array([]), phi: np.ndarray = np.array([]), **kwargs):
+def plot_phi(ax, x: np.ndarray = np.array([]), phix: np.ndarray = np.array([]), **kwargs):
     x_plot = np.zeros(x.size + 2)
     wx_plot = np.zeros(x.size + 2)
     x_plot[1:-1] = x
     x_plot[-1] = x[-1]
     scale = kwargs.pop("scale", 1)
-    wx_plot[1:-1] = -wx / np.max(np.abs(wx)) * scale
+    wx_plot[1:-1] = -phix / np.max(np.abs(phix)) * scale
     zorder = kwargs.pop("zorder", 2)
     lw = kwargs.pop("lw", 1)
     c = kwargs.pop("c", "black")

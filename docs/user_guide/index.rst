@@ -20,7 +20,10 @@ Inhaltsverzeichnis
 
     cross_section
     cross_section_height
-    transfer_relation
+    straight_beam_constant_cs
+    straight_beam_non_constant_cs
+    reduction_method
+    .. transfer_relation
 
 
 .. meta::

@@ -21,7 +21,7 @@ def convert_poly(function):
         a_poly = 0
         q = sp.symbols("q0:{}".format(deg + 1))
         for i in range(deg + 1):
-            a_poly += x**i / np.math.factorial(i) * q[i]
+            a_poly += sp.Symbol("x") ** i / np.math.factorial(i) * q[i]
         a_poly = sp.poly(a_poly)
 
         function_poly = sp.poly(function)
@@ -72,7 +72,6 @@ def bj_opt2_p89(
     n: int = 5,
     n_iterations: int = 30,
     return_aj: bool = False,
-    side="+",
     **s,
 ):
     if isinstance(x, int) or isinstance(x, float):
@@ -82,16 +81,13 @@ def bj_opt2_p89(
     gamma, K = gamma_K_function(**s)
     t = np.arange(0, n_iterations + 1)
     j = np.arange(n - 1, n + 1).reshape(-1, 1)
-    aj = aj_function_x(x, n, side=side)
+    aj = aj_function_x(x, n)
     beta = K / (j + 2 * t) / (j + 2 * t - 1) * x[:, None, None] ** 2
     beta[:, :, 0] = aj[:, -2:]
     bn_end = np.sum(np.multiply.accumulate(beta, axis=2), axis=2)  # todo create a Warning if not convergent
     bn = bj_recursion_p89(K, aj, bn_end)
 
-    if side == "+":
-        bn[x < 0, :] = 0
-    elif side == "-":
-        bn[x <= 0, :] = 0
+    bn[x < 0, :] = 0
 
     if return_aj:
         return aj, bn
@@ -112,7 +108,7 @@ def bj_recursion_p89(K: float, aj: np.ndarray, bn_end: np.ndarray):
     return bn
 
 
-def aj_function_x(x, n, side="+"):
+def aj_function_x(x, n):
     if isinstance(x, int) or isinstance(x, float):
         x = np.array([x])
 
@@ -122,10 +118,9 @@ def aj_function_x(x, n, side="+"):
     jn_fact = jn_fact.cumprod()
     an = x.reshape(-1, 1) ** jn / jn_fact
     an[:, 0] = 1
-    if side == "+":
-        an[x < 0, :] = 0
-    elif side == "-":
-        an[x <= 0, :] = 0
+
+    an[x < 0, :] = 0
+
     return an
 
 
@@ -153,7 +148,7 @@ def load_material_parameters(**s):
     elif "cs" in keys and "E" in keys:
         E = s.get("E")
         cs = s.get("cs")
-        EI = cs["Iy"] * E
+        EI = cs["I_y"] * E
         # todo GA~
     return EI, GA
 
@@ -166,7 +161,10 @@ def extract_load_length_index_dict(x: np.ndarray, **s):
     load_dict = {key: s[key] for key in ["P", "q_delta", "M_e", "phi_e", "W_e"] if key in s.keys()}
 
     xj = np.unique(np.array(flatten_dict([load_dict[key][1:] for key in load_dict.keys()])).astype(float))
-    index_dict = {key: np.in1d(xj, np.asarray(load_dict[key][1:]).astype(float)).nonzero()[0].astype(int) for key in load_dict.keys()}
+    index_dict = {
+        key: np.in1d(xj, np.asarray(load_dict[key][1:]).astype(float)).nonzero()[0].astype(int)
+        for key in load_dict.keys()
+    }
     # assert xj[index_dict["P"]] == s["P"][1]
     x_for_bj = np.zeros(x.size * (xj.size + 1))
     x_for_bj[: x.size] = x
@@ -195,15 +193,13 @@ def load_q_hat(q_j: np.ndarray = np.array([]), wv_j: np.ndarray = np.array([]), 
 
 def calc_load_integral_R(
     x: np.ndarray = np.array([]),
-    return_aj: bool = False,
-    return_bj: bool = False,
+    return_all=False,
     wv_j: object = None,
-    side="+",
     **s,
 ):
     gamma, K = gamma_K_function(**s)
     N = -s.get("N", 0)
-    P = s.get("P", 0)
+    P_array = stp.extract_P_from_beam(**s)
     l = s.get("l")
     if x.size == 0:
         x = np.array([l])
@@ -219,33 +215,30 @@ def calc_load_integral_R(
 
     load_j_arrays = calc_loadj_arrays(q_j, wv_j, **s)
 
-    x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
-    aj, bj, load_integrals_Q = calc_load_integral_Q(x, return_aj=True, return_bj=True, load_j_arrays=load_j_arrays, side=side, **s)
+    # x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
+    aj, bj, x_loads, x_P, P_array, load_integrals_Q = calc_load_integral_Q(x, return_all=True, **s)
 
+    mask = _load_bj_x_mask(x_loads, x)
     d_R = np.zeros((x.size, 5))
-    d_R[:, 0] = -gamma * (bj[: x.size, 3] / EI - bj[: x.size, 1] / GA) * N * wv_j[1]
-    d_R[:, 1] = -gamma * bj[: x.size, 2] / EI * N * wv_j[1]
-    d_R[:, 2] = gamma * bj[: x.size, 1] * N * wv_j[1]
+    d_R[:, 0] = -gamma * (bj[mask, 3] / EI - bj[mask, 1] / GA) * N * wv_j[1]
+    d_R[:, 1] = -gamma * bj[mask, 2] / EI * N * wv_j[1]
+    d_R[:, 2] = gamma * bj[mask, 1] * N * wv_j[1]
 
     load_integrals_R = load_integrals_Q + d_R
 
-    load_integrals_R[:, 3] = -np.sum(aj[: x.size, 1 : 1 + q_j.size] * q_j, axis=1)
+    load_integrals_R[:, 3] = -np.sum(aj[mask, 1 : 1 + q_j.size] * q_j, axis=1)
+    if x_P.shape[0] > 0:
+        for i in range(P_array.shape[0]):
+            mask = _load_bj_x_mask(x_loads, x_P[:, i])
+            load_integrals_R[:, 3] += -aj[mask, 0] * P_array[i, 0]
 
-    if "P" in index_dict.keys():
-        index_b_s = index_dict["P"][0] + x.size
-        load_integrals_R[:, 3] += -aj[index_b_s :: x_j.size, 0] * P[0]
+    # if "q_delta" in index_dict.keys():
+    #     index_b_s = index_dict["q_delta"][0] + x.size
+    #     index_b_ss = index_dict["q_delta"][1] + x.size
+    #     load_integrals_R[:, 3] += -(aj[index_b_s :: x_j.size, 1] - aj[index_b_ss :: x_j.size, 1]) * q_delta[0]
 
-    if "q_delta" in index_dict.keys():
-        index_b_s = index_dict["q_delta"][0] + x.size
-        index_b_ss = index_dict["q_delta"][1] + x.size
-        load_integrals_R[:, 3] += -(aj[index_b_s :: x_j.size, 1] - aj[index_b_ss :: x_j.size, 1]) * q_delta[0]
-
-    if return_bj and return_aj:
-        return aj, bj, load_integrals_R
-    elif return_bj:
-        return bj, load_integrals_R
-    elif return_aj:
-        return aj, load_integrals_R
+    if return_all:
+        return aj, bj, x_loads, x_P, P_array, load_integrals_R
     else:
         return load_integrals_R
 
@@ -257,6 +250,7 @@ def calc_load_integral_R_poly(
     load_j_arrays=None,
     return_aj: bool = False,
     return_bj: bool = False,
+    return_all: bool = False,
     wv_j: object = None,
     **s,
 ):
@@ -304,26 +298,32 @@ def calc_load_integral_R_poly(
     max_bj_index = np.max([m_j.size + 3, q_hat_j.size + 4, kappa_j.size + 2]) - 1
     x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
 
-    aj, bj, load_integrals_Q = calc_load_integral_Q_poly(x, return_aj=True, return_bj=True, load_j_arrays=load_j_arrays, **s)
+    aj, bj, x_loads, x_P, P_array, load_integrals_Q = calc_load_integral_Q_poly(
+        x, return_all=True, load_j_arrays=load_j_arrays, **s
+    )
 
+    mask = _load_bj_x_mask(x_loads, x)
     d_R = np.zeros((x.size, 5))
-    d_R[:, 0] = -bj[: x.size, 0, 3] / EI0 * N * wv_j[1]
-    d_R[:, 1] = -bj[: x.size, 1, 3] / EI0 * N * wv_j[1]
-    d_R[:, 2] = +bj[: x.size, 0, 1] * N * wv_j[1]
+    d_R[:, 0] = -bj[mask, 0, 3] / EI0 * N * wv_j[1]
+    d_R[:, 1] = -bj[mask, 1, 3] / EI0 * N * wv_j[1]
+    d_R[:, 2] = +bj[mask, 0, 1] * N * wv_j[1]
 
     load_integrals_R = load_integrals_Q + d_R
 
-    load_integrals_R[:, 3] = -np.sum(aj[: x.size, 1 : 1 + q_j.size] * q_j, axis=1)
+    load_integrals_R[:, 3] = -np.sum(aj[mask, 1 : 1 + q_j.size] * q_j, axis=1)
 
-    if "P" in index_dict.keys():
-        index_b_s = index_dict["P"][0] + x.size
-        load_integrals_R[:, 3] += -aj[index_b_s :: x_j.size, 0] * P[0]
+    if P_array.shape[0] > 0:
+        for i in range(P_array.shape[0]):
+            maskP = _load_bj_x_mask(x_loads, x_P[:, i])
+            load_integrals_R[:, 3] += -aj[maskP, 0] * P[0]
 
     if "q_delta" in index_dict.keys():
         index_b_s = index_dict["q_delta"][0] + x.size
         index_b_ss = index_dict["q_delta"][1] + x.size
         load_integrals_R[:, 3] += -(aj[index_b_s :: x_j.size, 1] - aj[index_b_ss :: x_j.size, 1]) * q_delta[0]
 
+    if return_all:
+        return aj, bj, load_integrals_R, mask
     if return_bj and return_aj:
         return aj, bj, load_integrals_R
     elif return_bj:
@@ -354,10 +354,177 @@ def calc_loadj_arrays(q_j: np.ndarray = np.array([]), wv_j: np.ndarray = np.arra
     return {"q_hat_j": q_hat_j, "m_j": m_j, "kappa_j": kappa_j}
 
 
-def calc_load_integral_Q(
+def extract_P_from_beam(**s):
+    P = s.get("P", (0, 0))
+    Px_array = np.array([value for key, value in s.items() if 'P' in key])
+    return Px_array  # column 0: magnitude, column 1: position
+
+
+def _load_bj_x_mask(x, y):
+    index = np.argsort(x)
+    sorted_x = x[index]
+    sorted_index = np.searchsorted(sorted_x, y)
+
+    yindex = np.take(index, sorted_index, mode="clip")
+    mask = x[yindex] != y
+
+    result = np.ma.array(yindex, mask=mask)
+
+    return result
+
+
+def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
+
+    gamma, K = gamma_K_function(**s)
+    l = s.get("l")
+    q = s.get("q", 0)
+    N = -s.get("N", 0)
+
+    if isinstance(x, (int, float)):
+        x = np.array([x])
+    if x.size == 0:
+        x = np.array([l])
+
+    EI, GA = load_material_parameters(**s)
+
+    q_delta = s.get("q_delta", (0, 0, 0))
+    P = s.get("P", 0)
+
+    M_e = s.get("M_e", (0, 0))
+    phi_e = s.get("phi_e", (0, 0))
+    W_e = s.get("W_e", (0, 0))
+
+    wv = convert_psi0_w0_to_wv(**s)
+    wv_j = convert_poly_wv(wv)
+
+    q_j = convert_poly(q)
+    load_j_arrays = calc_loadj_arrays(q_j, wv_j, **s)
+
+    q_hat_j = load_j_arrays["q_hat_j"]
+    m_j = load_j_arrays["m_j"]
+    kappa_j = load_j_arrays["kappa_j"]
+    max_bj_index = np.max([m_j.size + 3, q_hat_j.size + 4, kappa_j.size + 2]) - 1
+
+    x_loads = np.copy(x)
+    P_array = extract_P_from_beam(**s)
+    x_P = np.array([])
+    if P_array.shape[0] > 0:
+        x_P = x[:, None] - P_array[:, 1]  # every col is one P
+        x_P[x_P < 0] = -1
+        x_loads = np.append(x_loads, x_P.flatten())
+    x_loads[x_loads < 0] = -1
+    x_loads = np.unique(x_loads)
+
+    aj, bj = bj_opt2_p89(x=x_loads, n=max_bj_index, return_aj=True, **s)
+
+    q_hat_vec = np.zeros((x.size, 5))
+    m_0_vec = np.zeros((x.size, 5))
+    kappe_0_vec = np.zeros((x.size, 5))
+    q_delta_vec = np.zeros((x.size, 5))
+    P_vec = np.zeros((x.size, 5))
+    M_e_vec = np.zeros((x.size, 5))
+    phi_e_vec = np.zeros((x.size, 5))
+    W_e_vec = np.zeros((x.size, 5))
+
+    mask = _load_bj_x_mask(x_loads, x)
+    if "q" in s.keys() or "w_0" in s.keys():
+        q_hat_vec[:, 0] = gamma * np.sum(
+            (bj[mask, 4 : 4 + q_hat_j.size] / EI - bj[mask, 2 : 2 + q_hat_j.size] / GA) * q_hat_j,
+            axis=1,
+        )
+        q_hat_vec[:, 1] = gamma / EI * np.sum(bj[mask, 3 : 3 + q_hat_j.size] * q_hat_j, axis=1)
+        q_hat_vec[:, 2] = -gamma * np.sum(bj[mask, 2 : 2 + q_hat_j.size] * q_hat_j, axis=1)
+        q_hat_vec[:, 3] = -gamma * np.sum(bj[mask, 1 : 1 + q_hat_j.size] * q_hat_j, axis=1)
+        q_hat_vec[:, 4] = 0.0
+
+    if "m_0" in s.keys():
+        m_0_vec[:, 0] = -gamma / EI * np.sum((bj[mask, 3 : 3 + m_j.size]) * m_j, axis=1)
+        m_0_vec[:, 1] = -1 / EI * np.sum(bj[mask, 2 : 2 + m_j.size] * m_j, axis=1)
+        m_0_vec[:, 2] = +np.sum(bj[mask, 1 : 1 + m_j.size] * m_j, axis=1)
+        m_0_vec[:, 3] = +K * np.sum(bj[mask, 2 : 2 + m_j.size] * m_j, axis=1)
+        m_0_vec[:, 4] = 0.0
+
+    if "kappe_0" in s.keys():
+        kappe_0_vec[:, 0] = -gamma * np.sum(bj[mask, 2 : 2 + kappa_j.size] * kappa_j, axis=1)
+        kappe_0_vec[:, 1] = -gamma * np.sum(bj[mask, 1 : 1 + kappa_j.size] * kappa_j, axis=1)
+        kappe_0_vec[:, 2] = -gamma * N * np.sum(bj[mask, 2 : 2 + kappa_j.size] * kappa_j, axis=1)
+        kappe_0_vec[:, 3] = -gamma * N * np.sum(bj[mask, 1 : 1 + kappa_j.size] * kappa_j, axis=1)
+        kappe_0_vec[:, 4] = 0.0
+
+    # if "q_delta" in index_dict.keys():
+    #     q_delta_vec[:, 0] = (
+    #         gamma
+    #         * (
+    #             (bj[index_b_s :: x_j.size, 4] - bj[index_b_ss :: x_j.size, 4]) / EI
+    #             - (bj[index_b_s :: x_j.size, 2] - bj[index_b_ss :: x_j.size, 2]) / GA
+    #         )
+    #         * q_delta[0]
+    #     )
+    #     q_delta_vec[:, 1] = +gamma * (bj[index_b_s :: x_j.size, 3] - bj[index_b_ss :: x_j.size, 3]) / EI * q_delta[0]
+    #     q_delta_vec[:, 2] = -gamma * (bj[index_b_s :: x_j.size, 2] - bj[index_b_ss :: x_j.size, 2]) * q_delta[0]
+    #     q_delta_vec[:, 3] = -gamma * (bj[index_b_s :: x_j.size, 1] - bj[index_b_ss :: x_j.size, 1]) * q_delta[0]
+    #     q_delta_vec[:, 4] = 0.0
+
+    if P_array.shape[0] > 0:
+        for i in range(P_array.shape[0]):
+            mask = _load_bj_x_mask(x_loads, x_P[:, i])
+            P_vec[:, 0] += gamma * (bj[mask, 3] / EI - bj[mask, 1] / GA) * P_array[i, 0]
+            P_vec[:, 1] += gamma * bj[mask, 2] / EI * P_array[i, 0]
+            P_vec[:, 2] += -gamma * bj[mask, 1] * P_array[i, 0]
+            P_vec[:, 3] += -gamma * bj[mask, 0] * P_array[i, 0]
+            P_vec[:, 4] += 0.0
+
+    # if "M_e" in index_dict.keys():
+
+    #     index_b_s = index_dict["M_e"][0]
+    #     M_e_vec[:] = np.array(
+    #         [
+    #             -gamma * (bj[index_b_s, 2] / EI) * M_e[0],
+    #             -bj[index_b_s, 1] / EI * M_e[0],
+    #             +bj[index_b_s, 0] * M_e[0],
+    #             +K * bj[index_b_s, 1] * M_e[0],
+    #             0.0,
+    #         ]
+    #     )
+    # if "phi_e" in index_dict.keys():
+    #     index_b_s = index_dict["phi_e"][0]
+    #     phi_e_vec[:] = np.array(
+    #         [
+    #             -gamma * bj[index_b_s, 2] * phi_e[0],
+    #             -bj[index_b_s, 0] * phi_e[0],
+    #             -gamma * N * bj[index_b_s, 1] * phi_e[0],
+    #             -gamma * N * bj[index_b_s, 0] * phi_e[0],
+    #             0.0,
+    #         ]
+    #     )
+    # if "W_e" in index_dict.keys():
+    #     index_b_s = index_dict["W_e"][0]
+    #     W_e_vec[:] = np.array(
+    #         [
+    #             +bj[index_b_s, 0] * W_e[0],
+    #             +K / gamma * bj[index_b_s, 1] * W_e[0],
+    #             +N * bj[index_b_s, 0] * W_e[0],
+    #             +N * K * bj[index_b_s, 1] * W_e[0],
+    #             0.0,
+    #         ]
+    #     )
+    # print(q_hat_vec)
+    # print(q_delta_vec)
+
+    load_integrals_Q = q_hat_vec + P_vec + q_delta_vec
+    load_integrals_Q[:, -1] = 1.0
+
+    if return_all:
+        return aj, bj, x_loads, x_P, P_array, load_integrals_Q
+    else:
+        return load_integrals_Q
+
+
+def calc_load_integral_Q_old(
     x: np.ndarray = np.array([]),
     return_bj: bool = False,
     return_aj: bool = False,
+    return_all: bool = False,
     wv_j=None,
     load_j_arrays=None,
     side="+",
@@ -393,7 +560,12 @@ def calc_load_integral_Q(
 
     max_bj_index = np.max([m_j.size + 3, q_hat_j.size + 4, kappa_j.size + 2]) - 1
     x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
-    aj, bj = bj_opt2_p89(x_for_bj, max_bj_index, return_aj=True, side=side, **s)
+
+    # aj, bj = bj_opt2_p89(x_for_bj, max_bj_index, return_aj=True, side=side, **s)
+    aj, bj = bj_opt2_p89(x, max_bj_index, return_aj=True, side=side, **s)
+
+    # aj, bj for Forces P
+    P_array = extract_P_from_beam(**s)
 
     q_hat_vec = np.zeros((x.size, 5))
     m_0_vec = np.zeros((x.size, 5))
@@ -446,13 +618,16 @@ def calc_load_integral_Q(
         q_delta_vec[:, 4] = 0.0
 
     if "P" in index_dict.keys():
-        index_b_s = index_dict["P"][0] + x.size
-        P_vec[:, 0] = gamma * (bj[index_b_s :: x_j.size, 3] / EI - bj[index_b_s :: x_j.size, 1] / GA) * P[0]
-        P_vec[:, 1] = +gamma * bj[index_b_s :: x_j.size, 2] / EI * P[0]
-        P_vec[:, 2] = -gamma * bj[index_b_s :: x_j.size, 1] * P[0]
-        P_vec[:, 3] = -gamma * bj[index_b_s :: x_j.size, 0] * P[0]
-        P_vec[:, 4] = 0.0
+        for i in range(P_array.shape[0]):
+            x_P = x - P_array[i, 1]
+            x_P[x_P <= 0] = 0
+            aj_P, bj_P = bj_opt2_p89(x_P, max_bj_index, return_aj=True, side=side, **s)
 
+            P_vec[:, 0] += gamma * (bj_P[i, 3] / EI - bj_P[i, 1] / GA) * P_array[i, 0]
+            P_vec[:, 1] += +gamma * bj_P[i, 2] / EI * P_array[i, 0]
+            P_vec[:, 2] += -gamma * bj_P[i, 1] * P_array[i, 0]
+            P_vec[:, 3] += -gamma * bj_P[i, 0] * P_array[i, 0]
+            P_vec[:, 4] += 0.0
     if "M_e" in index_dict.keys():
 
         index_b_s = index_dict["M_e"][0]
@@ -491,7 +666,9 @@ def calc_load_integral_Q(
     load_integrals_Q = q_hat_vec + P_vec + q_delta_vec
     load_integrals_Q[:, -1] = 1.0
 
-    if return_bj and return_aj:
+    if return_all:
+        return aj, bj, aj_P, bj_p, load_integrals_Q
+    elif return_bj and return_aj:
         return aj, bj, load_integrals_Q
     elif return_bj:
         return bj, load_integrals_Q
@@ -573,15 +750,15 @@ def tr(
     tr_R_x = np.zeros((x.size, 5, 5))
 
     lengths, x_mask = calc_x_mask(args, x)
+    np.set_printoptions(precision=5)
     for i, s in enumerate(args):
         EI, GA = load_material_parameters(**s)
         if isinstance(EI, (float, int)):
-            tr_R_ends[i + 1, :, :] = tr_R_ends[i, :, :].dot(tr_R(side=side, **s))
-            tr_R_x[x_mask[i], :, :] = tr_R(x=x[x_mask[i]] - lengths[i], side=side, **s).dot(tr_R_ends[i, :, :])
+            tr_R_ends[i + 1, :, :] = tr_R(**s).dot(tr_R_ends[i, :, :])
+            tr_R_x[x_mask[i], :, :] = tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
         elif isinstance(EI, np.poly1d):
-            tr_R_ends[i + 1, :, :] = tr_R_ends[i, :, :].dot(tr_R_poly(**s))
+            tr_R_ends[i + 1, :, :] = tr_R_poly(**s).dot(tr_R_ends[i, :, :])
             tr_R_x[x_mask[i], :, :] = tr_R_poly(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
-
     if x.size == 1:
         tr_R_x = tr_R_x.reshape((5, 5))
 
@@ -613,11 +790,10 @@ def R_to_Q(x: np.ndarray = np.array([]), solution_vector: np.ndarray = np.array(
     return Q
 
 
-def tr_R(x: np.ndarray = np.array([]), side="+", **s):
-    if isinstance(x, list):
-        x = np.array(x)
-    if isinstance(x, int) or isinstance(x, float):
-        x = np.array([x])
+def tr_R(x: np.ndarray = np.array([]), **s):
+
+    if isinstance(x, (int, float, list)):
+        x = np.array([x]).flatten()
 
     N = -s.get("N", 0)
     l = s.get("l")
@@ -629,19 +805,21 @@ def tr_R(x: np.ndarray = np.array([]), side="+", **s):
     gamma, K = gamma_K_function(**s)
     EI, GA = load_material_parameters(**s)
 
-    bj, load_integrals_R = calc_load_integral_R(x, return_bj=True, side=side, **s)
+    aj, bj, x_loads, x_P, P_array, load_integrals_R = calc_load_integral_R(x, return_all=True, **s)
+
     tr = np.zeros((x.size, 5, 5))
+    mask = _load_bj_x_mask(x_loads, x)
 
     tr[:, :, :] = np.eye(5, 5)
-    tr[:, 0, 1] = gamma * bj[: x.size, 1]
-    tr[:, 0, 2] = -gamma * bj[: x.size, 2] / EI
-    tr[:, 0, 3] = -gamma * (bj[: x.size, 3] / EI - bj[: x.size, 1] / GA)
-    tr[:, 1, 1] = bj[: x.size, 0]
-    tr[:, 1, 2] = -bj[: x.size, 1] / EI
-    tr[:, 1, 3] = -gamma * bj[: x.size, 2] / EI
-    tr[:, 2, 1] = gamma * N * bj[: x.size, 1]
-    tr[:, 2, 2] = bj[: x.size, 0]
-    tr[:, 2, 3] = gamma * bj[: x.size, 1]
+    tr[:, 0, 1] = gamma * bj[mask, 1]
+    tr[:, 0, 2] = -gamma * bj[mask, 2] / EI
+    tr[:, 0, 3] = -gamma * (bj[mask, 3] / EI - bj[mask, 1] / GA)
+    tr[:, 1, 1] = bj[mask, 0]
+    tr[:, 1, 2] = -bj[mask, 1] / EI
+    tr[:, 1, 3] = -gamma * bj[mask, 2] / EI
+    tr[:, 2, 1] = gamma * N * bj[mask, 1]
+    tr[:, 2, 2] = bj[mask, 0]
+    tr[:, 2, 3] = gamma * bj[mask, 1]
     tr[:, :, 4] = load_integrals_R
 
     if x.size == 1:
@@ -678,20 +856,20 @@ def tr_R_poly(
 
     # todo repair eta gamma scheme
     # aj, bj = bj_opt2_p119_forloop(K,x,eta=eta, return_aj=True, **s)
-    bj, load_integrals_R = calc_load_integral_R_poly(x, eta=eta, gamma=gamma, return_bj=True, **s)
+    aj, bj, load_integrals_R, mask = calc_load_integral_R_poly(x, eta=eta, gamma=gamma, return_all=True, **s)
     # bj, load_integrals_Q = calc_load_integral_Q(x, return_bj=True,**s)
 
     tr = np.zeros((x.size, 5, 5))
     tr[:, :, :] = np.eye(5, 5)
-    tr[:, 0, 1] = bj[: x.size, 0, 1]
-    tr[:, 0, 2] = -bj[: x.size, 0, 2] / EI0
-    tr[:, 0, 3] = -bj[: x.size, 0, 3] / EI0
-    tr[:, 1, 1] = bj[: x.size, 1, 1]
-    tr[:, 1, 2] = -bj[: x.size, 1, 2] / EI0
-    tr[:, 1, 3] = -bj[: x.size, 1, 3] / EI0
-    tr[:, 2, 1] = N * bj[: x.size, 0, 1]
-    tr[:, 2, 2] = bj[: x.size, 0, 0]
-    tr[:, 2, 3] = bj[: x.size, 0, 1]
+    tr[:, 0, 1] = bj[mask, 0, 1]
+    tr[:, 0, 2] = -bj[mask, 0, 2] / EI0
+    tr[:, 0, 3] = -bj[mask, 0, 3] / EI0
+    tr[:, 1, 1] = bj[mask, 1, 1]
+    tr[:, 1, 2] = -bj[mask, 1, 2] / EI0
+    tr[:, 1, 3] = -bj[mask, 1, 3] / EI0
+    tr[:, 2, 1] = N * bj[mask, 0, 1]
+    tr[:, 2, 2] = bj[mask, 0, 0]
+    tr[:, 2, 3] = bj[mask, 0, 1]
 
     tr[:, :, 4] = load_integrals_R
 
@@ -750,6 +928,7 @@ def calc_load_integral_Q_poly(
     gamma=np.array([]),
     return_bj: bool = False,
     return_aj: bool = False,
+    return_all: bool = False,
     wv_j=None,
     load_j_arrays=None,
     **s,
@@ -795,9 +974,20 @@ def calc_load_integral_Q_poly(
     kappa_j = load_j_arrays["kappa_j"]
 
     max_bj_index = np.max([m_j.size + 3, q_hat_j.size + 4, kappa_j.size + 2]) - 1
+
+    x_loads = np.copy(x)
+    P_array = extract_P_from_beam(**s)
+    x_P = np.array([])
+    if P_array.shape[0] > 0:
+        x_P = x[:, None] - P_array[:, 1]  # every col is one P
+        x_P[x_P < 0] = -1
+        x_loads = np.append(x_loads, x_P.flatten())
+    x_loads[x_loads < 0] = -1
+    x_loads = np.unique(x_loads)
+
     x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
 
-    aj, bj = bj_opt2_p119_forloop(K, x_for_bj, eta, max_bj_index + 1, return_aj=True, **s)
+    aj, bj = bj_opt2_p119_forloop(K, x_loads, eta, max_bj_index + 1, return_aj=True, **s)
 
     q_hat_vec = np.zeros((x.size, 5))
     m_0_vec = np.zeros((x.size, 5))
@@ -809,46 +999,56 @@ def calc_load_integral_Q_poly(
     W_e_vec = np.zeros((x.size, 5))
     N_vec = np.zeros((x.size, 5))
 
+    mask = _load_bj_x_mask(x_loads, x)
     if "q" in s.keys() or "w_0" in s.keys():
-        q_hat_vec[:, 0] = 1 / EI0 * np.sum(bj[: x.size, 0, 4 : 4 + q_hat_j.size] * q_hat_j, axis=1)
-        q_hat_vec[:, 1] = 1 / EI0 * np.sum(bj[: x.size, 1, 4 : 4 + q_hat_j.size] * q_hat_j, axis=1)
-        q_hat_vec[:, 2] = -np.sum(aj[: x.size, 2 : 2 + q_hat_j.size] * q_hat_j, axis=1)
-        q_hat_vec[:, 3] = -np.sum(aj[: x.size, 1 : 1 + q_hat_j.size] * q_hat_j, axis=1)
+        q_hat_vec[:, 0] = 1 / EI0 * np.sum(bj[mask, 0, 4 : 4 + q_hat_j.size] * q_hat_j, axis=1)
+        q_hat_vec[:, 1] = 1 / EI0 * np.sum(bj[mask, 1, 4 : 4 + q_hat_j.size] * q_hat_j, axis=1)
+        q_hat_vec[:, 2] = -np.sum(aj[mask, 2 : 2 + q_hat_j.size] * q_hat_j, axis=1)
+        q_hat_vec[:, 3] = -np.sum(aj[mask, 1 : 1 + q_hat_j.size] * q_hat_j, axis=1)
         q_hat_vec[:, 4] = 0.0
 
     if "m_0" in s.keys():
-        m_0_vec[:, 0] = -1 / EI0 * np.sum(bj[: x.size, 0, 3 : 3 + m_j.size] * m_j, axis=1)
-        m_0_vec[:, 1] = -1 / EI0 * np.sum(bj[: x.size, 1, 3 : 3 + m_j.size] * m_j, axis=1)
-        m_0_vec[:, 2] = +np.sum(aj[: x.size, 1 : 1 + q_hat_j.size] * q_hat_j, axis=1)
+        m_0_vec[:, 0] = -1 / EI0 * np.sum(bj[mask, 0, 3 : 3 + m_j.size] * m_j, axis=1)
+        m_0_vec[:, 1] = -1 / EI0 * np.sum(bj[mask, 1, 3 : 3 + m_j.size] * m_j, axis=1)
+        m_0_vec[:, 2] = +np.sum(aj[mask, 1 : 1 + q_hat_j.size] * q_hat_j, axis=1)
         m_0_vec[:, 3:5] = 0.0
 
     if "kappa_0" in s.keys():
-        kappe_0_vec[:, 0] = -kappa_j * np.sum(bj[: x.size, 0, 2 : 2 + gamma.size] * gamma, axis=1)
-        kappe_0_vec[:, 1] = -kappa_j * np.sum(bj[: x.size, 1, 2 : 2 + gamma.size] * gamma, axis=1)
+        kappe_0_vec[:, 0] = -kappa_j * np.sum(bj[mask, 0, 2 : 2 + gamma.size] * gamma, axis=1)
+        kappe_0_vec[:, 1] = -kappa_j * np.sum(bj[mask, 1, 2 : 2 + gamma.size] * gamma, axis=1)
         kappe_0_vec[:, 2:5] = 0.0
 
     if "q_delta" in index_dict.keys():
+        # todo rewrite with mask
         index_b_s = index_dict["q_delta"][0] + x.size
         index_b_ss = index_dict["q_delta"][1] + x.size
         EI_star = EI_poly(l - x_for_bj[index_b_s])
         EI_2star = EI_poly(l - x_for_bj[index_b_ss])
 
-        q_delta_vec[:, 0] = (bj[index_b_s :: x_j.size, 0, 4] / EI_star - bj[index_b_ss :: x_j.size, 0, 4] / EI_2star) * q_delta[0]
-        q_delta_vec[:, 1] = (bj[index_b_s :: x_j.size, 1, 4] / EI_star - bj[index_b_ss :: x_j.size, 1, 4] / EI_2star) * q_delta[0]
+        q_delta_vec[:, 0] = (
+            bj[index_b_s :: x_j.size, 0, 4] / EI_star - bj[index_b_ss :: x_j.size, 0, 4] / EI_2star
+        ) * q_delta[0]
+        q_delta_vec[:, 1] = (
+            bj[index_b_s :: x_j.size, 1, 4] / EI_star - bj[index_b_ss :: x_j.size, 1, 4] / EI_2star
+        ) * q_delta[0]
         q_delta_vec[:, 2] = (aj[index_b_s :: x_j.size, 2] - aj[index_b_ss, 2]) * q_delta[0]
         q_delta_vec[:, 3] = (aj[index_b_s :: x_j.size, 1] - aj[index_b_ss, 1]) * q_delta[0]
         q_delta_vec[:, 4] = 0.0
 
-    if "P" in index_dict.keys():
-        index_b_s = index_dict["P"][0] + x.size
-        EI_star = EI_poly(l - x_j[index_dict["P"][0]])
-        P_vec[:, 0] = bj[index_b_s :: x_j.size, 0, 3] / EI_star * P[0]
-        P_vec[:, 1] = bj[index_b_s :: x_j.size, 1, 3] / EI_star * P[0]
-        P_vec[:, 2] = -aj[index_b_s :: x_j.size, 1] * P[0]
-        P_vec[:, 3] = -aj[index_b_s :: x_j.size, 0] * P[0]
-        P_vec[:, 4] = 0.0
+    if P_array.shape[0] > 0:
+        for i in range(P_array.shape[0]):
+            mask = _load_bj_x_mask(x_loads, x_P[:, i])
+            # index_b_s = index_dict["P"][0] + x.size
+            # EI_star = EI_poly(l - x_j[index_dict["P"][0]])
+            EI_star = EI_poly(x)
+            P_vec[:, 0] = bj[mask, 0, 3] / EI_star * P[0]
+            P_vec[:, 1] = bj[mask, 1, 3] / EI_star * P[0]
+            P_vec[:, 2] = -aj[mask, 1] * P[0]
+            P_vec[:, 3] = -aj[mask, 0] * P[0]
+            P_vec[:, 4] = 0.0
 
     if "M_e" in index_dict.keys():
+        # todo rewrite with mask
         index_b_s = index_dict["M_e"][0] + x.size
         EI_star = EI_poly(l - x_for_bj[index_b_s])
 
@@ -858,12 +1058,14 @@ def calc_load_integral_Q_poly(
         M_e_vec[:, 3:5] = 0.0
 
     if "phi_e" in index_dict.keys():
+        # todo rewrite with mask
         index_b_s = index_dict["phi_e"][0]
         phi_e_vec[:, 0] = -bj[index_b_s :: x_j.size, 0, 1] * phi_e[0]
         phi_e_vec[:, 1] = -bj[index_b_s :: x_j.size, 1, 1] * phi_e[0]
         phi_e_vec[:, 2:5] = 0.0
 
     if "W_e" in index_dict.keys():
+        # todo rewrite with mask
         index_b_s = index_dict["W_e"][0]
         W_e_vec[:, 0] = -bj[index_b_s :: x_j.size, 0, 0] * W_e[0]
         W_e_vec[:, 1] = -bj[index_b_s :: x_j.size, 1, 0] * W_e[0]
@@ -876,7 +1078,9 @@ def calc_load_integral_Q_poly(
     load_integrals_Q += N_vec
     load_integrals_Q[:, -1] = 1.0
 
-    if return_bj and return_aj:
+    if return_all:
+        return aj, bj, x_loads, x_P, P_array, load_integrals_Q
+    elif return_bj and return_aj:
         return aj, bj, load_integrals_Q
     elif return_bj:
         return bj, load_integrals_Q
@@ -1009,10 +1213,12 @@ def bj_opt1_p119_forloop(
     eta: np.ndarray = np.array([]),
     gamma: np.ndarray = np.array([]),
     n: int = 6,
-    n_iterations: int = 20,
+    n_iterations: int = 50,
     return_aj=False,
     **s,
 ):
+    if "eta_y" in s.keys():
+        eta = s["eta_y"]
     eta, gamma = check_and_convert_eta_gamma(eta=eta, gamma=gamma, **s)
     x = check_and_convert_input_array(x, **s)
 
@@ -1024,7 +1230,9 @@ def bj_opt1_p119_forloop(
     r = np.arange(1, eta.size)
     beta = np.zeros((x.size, n_array.size, j.size, n_iterations + eta.size, eta.size))
     beta[:, :, :, 0, 0] = 1
-    e = x[:, None, None, None] / (s - n_array[:, None, None])  # 0 Index = x | 1 index = n | 2 index = j | 3 Index = n_iterations
+    e = x[:, None, None, None] / (
+        s - n_array[:, None, None]
+    )  # 0 Index = x | 1 index = n | 2 index = j | 3 Index = n_iterations
     beta_diag = np.multiply.accumulate(e, axis=3)[:, :, :, : r.size]
     beta[:, :, :, r, r] = beta_diag
     nom = factorial(s.flatten() - 2)
@@ -1032,7 +1240,10 @@ def bj_opt1_p119_forloop(
     denom[denom == 0] = -1
     factor = nom / denom
     factor[factor < 0] = 0
-    Ka = float(Ka)
+    if isinstance(Ka, np.poly1d):
+        Ka = Ka(0)
+    else:
+        Ka = float(Ka)
     factor = np.array([factor.T[i * t.size : i * t.size + t.size] for i in range(j.size)])
     for i in range(t.size - eta.size + 1):
         beta[:, :, :, i + 1, 0] = Ka * beta[:, :, :, i + 1, 2] - np.sum(
@@ -1065,7 +1276,7 @@ def bj_opt2_p119_forloop(
     eta: np.ndarray = np.array([]),
     gamma: np.ndarray = np.array([]),
     n: int = 6,
-    n_iterations: int = 20,
+    n_iterations: int = 50,
     return_aj=False,
     **s,
 ):
@@ -1080,7 +1291,9 @@ def bj_opt2_p119_forloop(
     r = np.arange(1, eta.size)
     beta = np.zeros((x.size, n_array.size, j.size, n_iterations + eta.size, eta.size))
     beta[:, :, :, 0, 0] = 1
-    e = x[:, None, None, None] / (s - n_array[:, None, None])  # 0 Index = x | 1 index = n | 2 index = j | 3 Index = n_iterations
+    e = x[:, None, None, None] / (
+        s - n_array[:, None, None]
+    )  # 0 Index = x | 1 index = n | 2 index = j | 3 Index = n_iterations
     beta_diag = np.multiply.accumulate(e, axis=3)[:, :, :, : r.size]
     beta[:, :, :, r, r] = beta_diag
     nom = factorial(s.flatten() - 2)

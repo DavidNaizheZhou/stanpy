@@ -4,7 +4,7 @@ Querschnittswerte für Stäbe mit veränderlichen Querschnittsabmessungen
 **********************************************************************
 
 .. Note:: 
-    todos: Abbildungen, Definition der Vektoren h und b, Funktion für I, H, HEB, HEA, ...
+    todos: validate, Abbildungen, Definition der Vektoren h und b, Funktion für I, H, HEB, HEA, ...
 
 In diesem Abschnitt werden die Querschnittswerte für verschieden zusammengesetzte Rechtecksquerschnitte mit veränderlichen Querschnittsabmessungen berechnet.
 
@@ -15,24 +15,17 @@ EX01 Rechtecksquerschnitt
 
     import sympy as sym
     import stanpy as stp
-    import matplotlib.pyplot as plt
 
     x = sym.Symbol("x")
     l = 4  # m
     b, ha, hb = 0.2, 0.3, 0.4  # m
     hx = ha + (hb - ha) / l * x  # m
 
-    cs_pros = stp.cs(b=b, h=hx)
+    cs_props = stp.cs(b=b, h=hx)
 
-    print(cs_pros)
-
-    fig, ax = plt.subplots(figsize=(8, 2))
-
-    s = {"l": l}
-    stp.plot_system(ax, s)
-    plt.show()
-
-    
+    print(cs_props)    
+    print("I_y(0) = ", cs_props["I_y"](0))    
+    print("I_y(l) = ", cs_props["I_y"](l))    
 
 EX02 Zusammengesetzter Rechtecksquerschnitt
 ===========================================
@@ -40,17 +33,24 @@ EX02 Zusammengesetzter Rechtecksquerschnitt
 .. jupyter-execute::
 
     import numpy as np
+    import sympy as sym
     import stanpy as stp
 
+    x = sym.Symbol("x")
+    l = 4  # m
     s, t = 0.012, 0.02  # m
-    b, h = 0.5, 39.4
+    b, ha, hb = 0.2, 0.3, 0.4  # m
+    hx = ha + (hb - ha) / l * x  # m
+
     b_v = np.array([b, s, b])
-    h_v = np.array([t, h - 2 * t, t])
-    zsi_v = np.array([t / 2, t + (h - 2 * t) / 2, t + (h - 2 * t) + t / 2])  # von OK
+    h_v = np.array([t, hx, t])
+    zsi_v = np.array([t / 2, t + (hx - 2 * t) / 2, t + (hx - 2 * t) + t / 2])  # von OK
 
     cs_props = stp.cs(b=b_v, h=h_v, zsi=zsi_v)
 
-    print(cs_props)
+    print(cs_props)    
+    print("I_y(0) = ", cs_props["I_y"](0))    
+    print("I_y(l) = ", cs_props["I_y"](l))    
 
 EX03 I-Querschnitt
 ==================
@@ -58,16 +58,23 @@ EX03 I-Querschnitt
 .. jupyter-execute::
 
     import numpy as np
+    import sympy as sym
     import stanpy as stp
 
+    x = sym.Symbol("x")
+    l = 4  # m
     s, t = 0.012, 0.02  # m
-    b, h = 0.5, 0.39
+    b, ha, hb = 0.2, 0.3, 0.4  # m
+    hx = ha + (hb - ha) / l * x  # m
+
     b_v = np.array([b, s, b])
-    h_v = np.array([t, h - 2 * t, t])
+    h_v = np.array([t, hx - 2 * t, t])
 
     cs_props = stp.cs(b=b_v, h=h_v)
 
-    print(cs_props)
+    print(cs_props)    
+    print("I_y(0) = ", cs_props["I_y"](0))    
+    print("I_y(l) = ", cs_props["I_y"](l))    
 
 EX04 H-Querschnitt
 ==================
@@ -75,14 +82,18 @@ EX04 H-Querschnitt
 .. jupyter-execute::
 
     import numpy as np
+    import sympy as sym
     import stanpy as stp
-    import matplotlib.pyplot as plt
 
+    x = sym.Symbol("x")
+    l = 4  # m
     s, t = 0.012, 0.02  # m
-    b, h = 0.5, 0.39
+    ba, bb, ha, hb = 0.3, 0.4, 0.3, 0.4  # m
+    hx = ha + (hb - ha) / l * x  # m
+    bx = ba + (bb - ba) / l * x  # m
 
-    b_v = np.array([b, s, b])
-    h_v = np.array([t, h - 2 * t, t])
+    b_v = np.array([bx, s, bx])
+    h_v = np.array([t, hx - 2 * t, t])
 
     Ay = np.array(
         [
@@ -96,12 +107,9 @@ EX04 H-Querschnitt
 
     cs_props = stp.cs(b=b_v, h=h_v, y_si=y_si)
 
-    print(cs_props)
-
-    fig,ax =plt.subplots()
-    ax.plot([1,2,3,4],[5,2,3,4])
-    plt.show()
-
+    print(cs_props)    
+    print("I_y(0) = ", cs_props["I_y"](0))    
+    print("I_y(l) = ", cs_props["I_y"](l))    
 
 EX05 Kasten-Querschnitt
 =======================
@@ -109,13 +117,17 @@ EX05 Kasten-Querschnitt
 .. jupyter-execute::
 
     import numpy as np
+    import sympy as sym
     import stanpy as stp
 
+    x = sym.Symbol("x")
+    l = 4  # m
     s, t = 0.012, 0.02  # m
-    b, h = 0.5, 39.4
+    b, ha, hb = 0.3, 0.3, 0.4  # m
+    hx = ha + (hb - ha) / l * x  # m
 
     b_v = np.array([b, s, s, b])
-    h_v = np.array([t, h - 2 * t, h - 2 * t, t])
+    h_v = np.array([t, hx - 2 * t, hx - 2 * t, t])
 
     Az = np.array(
         [
@@ -141,7 +153,9 @@ EX05 Kasten-Querschnitt
 
     cs_props = stp.cs(b=b_v, h=h_v, z_si=z_si, y_si=y_si)
 
-    print(cs_props)
+    print(cs_props)    
+    print("I_y(0) = ", cs_props["I_y"](0))    
+    print("I_y(l) = ", cs_props["I_y"](l))    
 
 EX06 - Verstärkter I Querschnitt
 ================================
@@ -149,14 +163,21 @@ EX06 - Verstärkter I Querschnitt
 .. jupyter-execute::
 
     import numpy as np
+    import sympy as sym
     import stanpy as stp
 
+    x = sym.Symbol("x")
+    l = 4  # m
     s, t = 0.012, 0.02  # m
-    b, h = 0.5, 0.39
+    b, ha, hb = 0.3, 0.3, 0.4  # m
+    hx = ha + (hb - ha) / l * x  # m
+
+    b_v = np.array([b, s, s, b])
+    h_v = np.array([t, hx - 2 * t, hx - 2 * t, t])
     h_i = 0.05
 
     b_v = np.array([b, s, b, s, s, s, s])
-    h_v = np.array([t, h - 2 * t, t, h_i, h_i, h_i, h_i])
+    h_v = np.array([t, hx - 2 * t, t, h_i, h_i, h_i, h_i])
 
     Az = np.array(
         [
@@ -174,7 +195,9 @@ EX06 - Verstärkter I Querschnitt
 
     cs_props = stp.cs(b=b_v, h=h_v, z_si=z_si)
     
-    print(cs_props)
+    print(cs_props)    
+    print("I_y(0) = ", cs_props["I_y"](0))    
+    print("I_y(l) = ", cs_props["I_y"](l))    
 
 
 .. meta::

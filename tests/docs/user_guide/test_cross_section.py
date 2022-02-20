@@ -1,3 +1,5 @@
+# todo: tests
+
 def test_ex_01():
 
     import numpy as np
