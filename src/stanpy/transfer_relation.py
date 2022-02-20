@@ -355,9 +355,14 @@ def calc_loadj_arrays(q_j: np.ndarray = np.array([]), wv_j: np.ndarray = np.arra
 
 
 def extract_P_from_beam(**s):
-    P = s.get("P", (0, 0))
     Px_array = np.array([value for key, value in s.items() if 'P' in key])
     return Px_array  # column 0: magnitude, column 1: position
+
+
+def extract_N_from_beam(**s):
+    Nx_array = np.array([value for key, value in s.items() if 'N' in key])
+    print(Nx_array)
+    return Nx_array  # column 0: magnitude, column 1: position
 
 
 def _load_bj_x_mask(x, y):

@@ -97,7 +97,7 @@ def watermark(ax, watermark_pos=4):
     ax.add_artist(ao)
 
 
-def plot_slab(ax, xi, yi, xk, yk, **kwargs):
+def plot_beam(ax, xi, yi, xk, yk, **kwargs):
     df = kwargs.pop("df", True)  # definitionsfaser
     ax.plot(
         (xi, xk),
@@ -234,15 +234,40 @@ def plot_uniformly_distributed_load_patch(ax, xi, yi, xk, yk, q, **kwargs):
 
 
 def plot_point_load(ax, x, y, magnitude, **kwargs):
-    P_offset = kwargs.pop("P_offset", 0)
+    dy_P = kwargs.pop("dy_P", 0)
     ax.arrow(
         x,
-        y + magnitude / 2 + P_offset,
+        y + magnitude / 2 + dy_P,
         0,
         -magnitude / 2,
         head_width=0.05,
         color=kwargs.get("c", "black"),
     )
+
+
+def plot_point_load_H(ax, x, y, magnitude, **kwargs):
+    dx_N = kwargs.pop("dx_N", 0.1)
+    dy_N = kwargs.pop("dy_N", 0)
+    scale = kwargs.pop("scale_N", 1)
+    direction = kwargs.pop("direction", "left")
+    if direction == "left":
+        ax.arrow(
+            x + scale + dx_N,
+            y + dy_N,
+            -scale,
+            0,
+            head_width=0.05,
+            color=kwargs.get("c", "black"),
+        )
+    elif direction == "right":
+        ax.arrow(
+            x - scale - dx_N,
+            y + dy_N,
+            scale,
+            0,
+            head_width=0.05,
+            color=kwargs.get("c", "black"),
+        )
 
 
 # def plot_slab(ax,xi,yi,**kwargs):
@@ -265,7 +290,7 @@ def plot_system(ax, *args, **kwargs):
             l: float = s["l"]
             xk = xi + l
             yk = yi
-            plot_slab(ax, xi, yi, xk, yk, **kwargs)
+            plot_beam(ax, xi, yi, xk, yk, **kwargs)
         if support:
             if "bc_i" in s.keys():
                 if all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w", "M", "H"]]):
@@ -311,16 +336,24 @@ def plot_load(ax, *args, **kwargs):
     yk = 0
 
     q_offset = kwargs.pop("q_offset", 0)
-    P_offset = kwargs.pop("P_offset", 0)
-    scale = kwargs.pop("scale", 1)
+    dy_P = kwargs.pop("dy_P", 0)
+    dx_N = kwargs.pop("dx_N", 0.5)
+    dy_N = kwargs.pop("dy_N", 0)
+    P_scale = kwargs.pop("P_scale", 1)
+    N_scale = kwargs.pop("N_scale", 1)
+
     offset0_positiv = offset_positiv = copy.copy(kwargs.pop("offset", 0.3))
     offset0_negativ = offset_negativ = -copy.copy(kwargs.pop("offset", 0.3))
     q_array = np.zeros(len(args))
+    P_array_all = np.array([])
     for i, s in enumerate(args):
         if "q" in s.keys():
             q_array[i] = s["q"]
+        P_array_all = np.append(P_array_all, stp.extract_P_from_beam(**s))
+    P_array_all = P_array_all.flatten()
     for i, s in enumerate(args):
         P_array = stp.extract_P_from_beam(**s)
+        N_array = stp.extract_N_from_beam(**s)
         l = s["l"]
         xk = xi + l
         yk = yi
@@ -357,8 +390,8 @@ def plot_load(ax, *args, **kwargs):
                         ax,
                         xi + P_array[i][1],
                         offset_positiv,
-                        P_array[i][0] / 4 * scale,
-                        P_offset=P_offset,
+                        P_array[i][0] / np.max(P_array_all) * P_scale,
+                        dy_P=dy_P,
                         **kwargs,
                     )
                 elif P_array[i][0] < 0:
@@ -366,10 +399,35 @@ def plot_load(ax, *args, **kwargs):
                         ax,
                         xi + P_array[i][1],
                         offset_negativ,
-                        -P_array[i][0] / 4 * scale,
-                        P_offset=P_offset,
+                        -P_array[i][0] / np.max(P_array_all) * P_scale,
+                        dy_P=dy_P,
                         **kwargs,
                     )
+
+        if N_array.shape[0]:
+            # plot_point_load(ax,xi,yi,s["P"][1],s["P"][0]/np.max(p_array))
+            for i in range(P_array.shape[0]):
+                if P_array[i][0] > 0:
+                    plot_point_load_H(
+                        ax,
+                        xi + l,
+                        0,
+                        N_array[i] / 4 * N_scale,
+                        dx_N=dx_N,
+                        dy_N=dy_N,
+                        **kwargs,
+                    )
+                elif P_array[i][0] < 0:
+                    plot_point_load_H(
+                        ax,
+                        xi + l,
+                        0,
+                        N_array[i] / 4 * N_scale,
+                        dx_N=dx_N,
+                        dy_N=dy_N,
+                        **kwargs,
+                    )
+
         xi = xk
         yi = yk
         offset_positiv = offset0_positiv
@@ -509,6 +567,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
                 lw=1,
             )
             annotation_list = np.sort(np.array(annotation_list))
+            print(annotation_list)
             annotation_string = np.array2string(annotation_list, separator=",", suppress_small=True)
             annotation_pos_y = np.max(Rx_plot[mask_plot])
             if annotation_pos_y > 0:
@@ -523,6 +582,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
                     annotation_clip=True,
                 )
             else:
+                annotation_pos_y = np.min(Rx_plot[mask_plot])
                 ax.annotate(
                     annotation_string,
                     (np.max(annotation), annotation_pos_y - 0.1),
@@ -540,6 +600,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
 
             if mask.any():
                 ax.vlines(annotation, 0, np.max(Rx_plot[mask_plot]), color=c, **kwargs, lw=1)
+
                 annotation_pos_y = np.max(Rx_plot[mask_plot])
                 if annotation_pos_y > 0:
                     ax.annotate(
@@ -553,6 +614,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
                         annotation_clip=True,
                     )
                 else:
+                    annotation_pos_y = np.min(Rx_plot[mask_plot])
                     ax.annotate(
                         np.round(np.max(Rx[mask]), annotate_round),
                         (annotation, annotation_pos_y - 0.1),
@@ -818,22 +880,6 @@ def plot_w_0(ax, s, **kwargs):
     ax.plot(xplot, offset - wv / np.max(np.abs(wv)) * 0.25 * scale, c=c)
 
 
-# def plot_w(ax, *args, **kwargs):
-#     for s in args:
-#         l = s["l"]
-#         wx = s["w_sol"]
-#         x = np.linspace(0, l, wx.size)
-#         scale = 0.2
-#         x_plot = np.zeros(x.size + 2)
-#         wx_plot = np.zeros(x.size + 2)
-#         x_plot[1:-1] = x
-#         x_plot[-1] = x[-1]
-#         scale = kwargs.pop("scale", 1)
-#         wx_plot[1:-1] = -wx / np.max(np.abs(wx)) * scale
-#         zorder = kwargs.pop("zorder", 2)
-#         lw = kwargs.pop("lw", 1)
-#         c = kwargs.pop("c", "black")
-#         ax.plot(x_plot, wx_plot, zorder=zorder, lw=lw, c=c, **kwargs)
 def plot_w(ax, x: np.ndarray = np.array([]), wx: np.ndarray = np.array([]), **kwargs):
     x_plot = np.zeros(x.size + 2)
     wx_plot = np.zeros(x.size + 2)
@@ -862,26 +908,119 @@ def plot_phi(ax, x: np.ndarray = np.array([]), phix: np.ndarray = np.array([]), 
 
 
 if __name__ == "__main__":
-    import sympy as sp
+    import numpy as np
+    import matplotlib.pyplot as plt
 
-    x_sym = sp.Symbol("x")
-    E = 3e7  # kN/m2
-    b = 0.2  # m
-    ha = hb = 0.3  # m
-    hc = 0.4  # m
-    l1 = 4  # m
-    l2 = 3  # m
-    hx = ha + (hc - hb) / l2 * x_sym
+    def koch_snowflake(order, scale=10):
+        """
+        Return two lists x, y of point coordinates of the Koch snowflake.
 
-    cs_props1 = stp.cs(b=b, h=ha)
-    s1 = {"E": E, "cs": cs_props1, "q": 10, "l": l1, "bc_i": {"w": 0, "M": 0, "H": 0}}
+        Parameters
+        ----------
+        order : int
+            The recursion depth.
+        scale : float
+            The extent of the snowflake (edge length of the base triangle).
+        """
 
-    cs_props2 = stp.cs(b=b, h=hx)
-    s2 = {"E": E, "cs": cs_props2, "q": 10, "l": l2, "bc_k": {"w": 0, "phi": 0}}
+        def _koch_snowflake_complex(order):
+            if order == 0:
+                # initial triangle
+                angles = np.array([0, 120, 240]) + 90
+                return scale / np.sqrt(3) * np.exp(np.deg2rad(angles) * 1j)
+            else:
+                ZR = 0.5 - 0.5j * np.sqrt(3) / 3
 
-    fig, ax = plt.subplots(figsize=(8, 4))
-    plot_system(ax, s1, s2, lw=2, watermark_pos=4)
-    plot_load(ax, s1, s2)
-    ax.set_ylim(-1.5, 1.5)
-    ax.grid(linestyle="--")
-    plt.show()
+                p1 = _koch_snowflake_complex(order - 1)  # start points
+                p2 = np.roll(p1, shift=-1)  # end points
+                dp = p2 - p1  # connection vectors
+
+                new_points = np.empty(len(p1) * 4, dtype=np.complex128)
+                new_points[::4] = p1
+                new_points[1::4] = p1 + dp / 3
+                new_points[2::4] = p1 + dp * ZR
+                new_points[3::4] = p1 + dp / 3 * 2
+                return new_points
+
+        points = _koch_snowflake_complex(order)
+        x, y = points.real, points.imag
+        return x, y
+
+    test = koch_snowflake(5)
+    print(test)
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import stanpy as stp
+
+    EI = 32000  # kNm²
+    l = 6  # m
+    P = 10  # kN
+    q = 10  # kN/m
+    N = -1000  # kN
+
+    w_0 = 0.03
+
+    s = {
+        "EI": EI,
+        "l": 6,
+        "q": q,
+        "P1": (P, l / 3),
+        "N": N,
+        "w_0": w_0,
+        "bc_i": {"w": 0, "M": 0},
+        "bc_k": {"w": 0, "M": 0, "H": 0},
+    }
+
+    # fig, ax = plt.subplots(figsize=(12, 5))
+    # stp.plot_system(ax, s)
+    # stp.plot_load(ax, s)
+    # ax.grid(linestyle=":")
+    # ax.set_axisbelow(True)
+    # # ax.set_ylim(-0.75, 2)
+    # plt.show()
+
+    # x = np.linspace(0, 2, 100)
+    # fig, ax = plt.subplots(figsize=(12, 5))
+    # ax.plot(x, x, lw=lambda a: a * x / np.max(x))
+    # # ax.set_ylim(-0.75, 2)
+    # plt.show()
+
+    # dx = 1e-9
+    # x = np.linspace(0, l, 500)
+    # annotation = np.array([0, l / 3 - dx, l / 3, l / 2, 2, 3, 4, l - dx])
+    # x = np.sort(np.append(x, annotation))
+
+    # Fxa = stp.tr(s, x=x)
+    # Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    # Z_x = Fxa.dot(Z_a)
+
+    # print("Z_a =", Z_a)
+    # print("Z_b =", Z_b)
+
+    # w_x = Z_x[:, 0]
+    # phi_x = Z_x[:, 1]
+    # M_x = Z_x[:, 2]
+    # R_x = Z_x[:, 3]
+
+    # V_x = stp.R_to_Q(x, Z_x, s)
+
+    # scale = 0.5
+    # fig, ax = plt.subplots(figsize=(12, 5))
+    # stp.plot_system(ax, s, watermark_pos=1)
+    # stp.plot_R(
+    #     ax,
+    #     x=x,
+    #     Rx=R_x,
+    #     annotate_x=[0, [l / 3 - dx, l / 3], l / 2, l - dx],
+    #     fill_p="red",
+    #     fill_n="blue",
+    #     scale=scale,
+    #     alpha=0.2,
+    # )
+    # ax.grid(linestyle=":")
+    # ax.set_axisbelow(True)
+    # ax.set_ylim(-1, 1)
+    # ax.set_ylabel("R/Rmax*{}".format(scale))
+    # ax.set_title("[R] = kN")
+    # plt.show()

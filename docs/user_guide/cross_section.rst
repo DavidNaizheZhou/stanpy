@@ -88,11 +88,6 @@ EX04 H-Querschnitt
 
     print(cs_props)
 
-    fig,ax =plt.subplots()
-    ax.plot([1,2,3,4],[5,2,3,4])
-    plt.show()
-
-
 EX05 Kasten-Querschnitt
 =======================
 

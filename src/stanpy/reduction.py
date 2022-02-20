@@ -144,6 +144,10 @@ def solve_system(*slabs, x: np.ndarray = np.array([])):
     Fxx[0] = np.eye(5, 5)
 
     Fxa_plus[0] = np.zeros((5, 5))
+
+    if ~mask[-1].any():
+        raise IndexError("length of system = {} < sum beam list {}".format(l_global[-1], l))
+
     Fxa_plus[-1] = Fxx[mask[-1]][-1].dot(Fxa_plus[-2])
 
     za_fiktiv, z_end = stp.solve_tr(Fxa_plus[-1], bc_i=bc_i[0], bc_k=bc_k[-1])
@@ -171,9 +175,7 @@ def solve_system(*slabs, x: np.ndarray = np.array([])):
     x = x[arr1inds]
     zx = zx[arr1inds]
 
-    np.set_printoptions(precision=5)
-
-    return x, zx.round(10)
+    return x, zx.round(9)
 
 
 if __name__ == "__main__":

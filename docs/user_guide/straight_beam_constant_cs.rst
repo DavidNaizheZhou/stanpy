@@ -30,15 +30,16 @@ EX01-01 (problem)
     stp.plot_load(ax, s)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
-    ax.set_ylim(-0.75, 0.75)
+    ax.set_ylim(-0.75, 1.2)
     plt.show()
 
 EX01-02 (solution) 
 ------------------
 .. jupyter-execute::
 
+    dx = 1e-9
     x = np.linspace(0, l, 100)
-    x = np.sort(np.append(x, [l / 2, l / 4, 3 * l / 4]))
+    x = np.sort(np.append(x, [l / 2, l / 4, 3 * l / 4, l-dx]))
     Fxa = stp.tr(s, x=x)
     Z_a, Z_b  = stp.solve_tr(Fxa[-1], **s)
 
@@ -72,7 +73,7 @@ EX01-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, l / 2, l / 4, 3 * l / 4, l], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, l / 2, l / 4, 3 * l / 4, l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-0.8, 0.8)
@@ -129,8 +130,9 @@ EX02-02 (solution)
 ------------------
 .. jupyter-execute::
 
+    dx = 1e-9
     x = np.linspace(0, l, 500)
-    annotation = np.array([0, l / 2, 2, 3, 4, l])
+    annotation = np.array([2-dx, 2, 3-dx, 3, 4-dx, 4, 6-dx])
     x = np.sort(np.append(x, annotation))
 
     Fxa = stp.tr(s, x=x)
@@ -152,12 +154,9 @@ Kräfte werden jeweils am Stabende angsetzt
     s3 = {"EI": EI, "l": 1, "P3": (P+2, 1)}
     s4 = {"EI": EI, "l": 2, "bc_k": {"w": 0, "M": 0, "H": 0}}
 
-    x = np.linspace(0, l, 500)
-    annotation = np.array([0, l / 2, 2, 3, 4, l])
-    x = np.sort(np.append(x, annotation))
-
     Fxa = stp.tr(s1, s2, s3, s4, x=x)
     Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    Z_x = Fxa.dot(Z_a)
 
     print("Z_a =", Z_a)
     print("Z_b =", Z_b)
@@ -174,12 +173,9 @@ Kräfte werden jeweils am Stabanfang angsetzt
     s3 = {"EI": EI, "l": 1, "P2": (P+1, 0)}
     s4 = {"EI": EI, "l": 2, "P1": (P+2, 0), "bc_k": {"w": 0, "M": 0, "H": 0}}
 
-    x = np.linspace(0, l, 500)
-    annotation = np.array([0, l / 2, 2, 3, 4, l])
-    x = np.sort(np.append(x, annotation))
-
     Fxa = stp.tr(s1, s2, s3, s4, x=x)
     Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    Z_x = Fxa.dot(Z_a)
 
     print("Z_a =", Z_a)
     print("Z_b =", Z_b)
@@ -196,7 +192,7 @@ EX02-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s)
-    stp.plot_M(ax, x=x, Mx=M_x, annotate_x=annotation, fill_p="red", scale=scale, alpha=0.2)
+    stp.plot_M(ax, x=x, Mx=M_x, annotate_x=[2, 3, 4], fill_p="red", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-0.8, 0.1)
@@ -209,10 +205,10 @@ EX02-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=annotation, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, [2-dx, 2], 3-dx, 3, [4, 4-dx], 6-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
-    ax.set_ylim(-0.8, 0.8)
+    ax.set_ylim(-1.5, 1.5)
     ax.set_ylabel("V/Vmax*{}".format(scale))
     ax.set_title("[V] = kN")
     plt.show()
@@ -261,15 +257,16 @@ EX03-01 (problem)
     stp.plot_load(ax, s)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
-    ax.set_ylim(-0.75, 1.0)
+    ax.set_ylim(-0.75, 2)
     plt.show()
 
 EX03-02 (solution) 
 ------------------
 .. jupyter-execute::
 
+    dx = 1e-9
     x = np.linspace(0, l, 500)
-    annotation = np.array([0, l / 2, 2, 3, 4, l])
+    annotation = np.array([0, l / 3 - dx, l / 3, l / 2, 2, 3, 4, l-dx])
     x = np.sort(np.append(x, annotation))
 
     Fxa = stp.tr(s, x=x)
@@ -293,7 +290,7 @@ EX03-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s)
-    stp.plot_M(ax, x=x, Mx=M_x, annotate_x=annotation, fill_p="red", scale=scale, alpha=0.2)
+    stp.plot_M(ax, x=x, Mx=M_x, annotate_x=[0, l/3, x[M_x==np.max(M_x)], l], fill_p="red", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-1, 0.1)
@@ -306,10 +303,10 @@ EX03-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_R(ax, x=x, Rx=R_x, annotate_x=annotation, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_R(ax, x=x, Rx=R_x, annotate_x=[0, [l/3-dx, l/3], l/2, l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
-    ax.set_ylim(-0.8, 1)
+    ax.set_ylim(-1, 1)
     ax.set_ylabel("R/Rmax*{}".format(scale))
     ax.set_title("[R] = kN")
     plt.show()
@@ -319,10 +316,10 @@ EX03-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=annotation, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, [l/3-dx, l/3], l/2, l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
-    ax.set_ylim(-0.8, 1)
+    ax.set_ylim(-1, 1)
     ax.set_ylabel("V/Vmax*{}".format(scale))
     ax.set_title("[V] = kN")
     plt.show()
@@ -375,15 +372,16 @@ EX04-01 (problem)
     stp.plot_load(ax, s)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
-    ax.set_ylim(-1.5, 1.5)
+    ax.set_ylim(-1.5, 2)
     plt.show()
 
 EX04-02 (solution) 
 ------------------
 .. jupyter-execute::
 
+    dx = 1e-9
     x = np.linspace(0, l, 500)
-    annotation = np.array([0, l / 2, 2, 3, 4, l])
+    annotation = np.array([l / 2 - dx, l / 2, l-dx])
     x = np.sort(np.append(x, annotation))
 
     Fxa = stp.tr(s, x=x)
@@ -407,7 +405,7 @@ EX04-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s)
-    stp.plot_M(ax, x=x, Mx=M_x, annotate_x=annotation, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_M(ax, x=x, Mx=M_x, annotate_x=[0,x[M_x==np.max(M_x)], l], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-1, 1.2)
@@ -420,7 +418,7 @@ EX04-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_R(ax, x=x, Rx=R_x, annotate_x=annotation, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_R(ax, x=x, Rx=R_x, annotate_x=[0, [l/2-dx, l/2, l-dx]], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-0.8, 1.4)
@@ -433,7 +431,7 @@ EX04-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=annotation, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, [l/2-dx, l/2, l-dx]], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-0.8, 1.2)
@@ -493,8 +491,7 @@ mit
     \gamma = \frac{1}{1-\frac{N^{II}}{S}}\qquad K = -\gamma\frac{N^{II}}{EI}\qquad\bar{q}_j = q_j - N^{II} w^V_{j+2}
 
 
-Da sich jedes beliebige Polynom als linear Kombination von :math:`a_j` anschreiben lässt eribt sich in beiden Fällen
-die allgemeine Form zu
+Beide Differentialgleichungen haben die Form allgemeine Form
 
 .. math::
     :label: general_differential_equation
