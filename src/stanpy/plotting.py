@@ -28,6 +28,7 @@ from PIL import Image
 import numpy as np
 import stanpy as stp
 
+import importlib.resources as pkg_resources
 
 # Markers ################################
 verts = [(0, 0), (5, -5), (-5, -5), (0, 0)]
@@ -78,10 +79,12 @@ load_path = Path(verts, codes)
 
 
 def watermark(ax, watermark_pos=4):
-    if "user_guide" in os.listdir():
-        img = Image.open(os.path.join("user_guide", "static", "stanpy_logo_2-removebg.png"))
-    else:
-        img = Image.open(os.path.join("src", "stanpy", "static", "stanpy_logo_2-removebg.png"))
+    # if "user_guide" in os.listdir():
+    #     img = Image.open(os.path.join("user_guide", "static", "stanpy_logo_2-removebg.png"))
+    # else:
+    #     img = Image.open(os.path.join("src", "stanpy", "static", "stanpy_logo_2-removebg.png"))
+    with pkg_resources.path(stp.static, 'stanpy_logo_2-removebg.png') as path:
+        img = Image.open(path)
 
     width = ax.bbox.xmax - ax.bbox.xmin
     wm_width = int(width / 16)  # make the watermark 1/4 of the figure size
@@ -567,7 +570,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
                 lw=1,
             )
             annotation_list = np.sort(np.array(annotation_list))
-            print(annotation_list)
+
             annotation_string = np.array2string(annotation_list, separator=",", suppress_small=True)
             annotation_pos_y = np.max(Rx_plot[mask_plot])
             if annotation_pos_y > 0:
@@ -908,46 +911,6 @@ def plot_phi(ax, x: np.ndarray = np.array([]), phix: np.ndarray = np.array([]), 
 
 
 if __name__ == "__main__":
-    import numpy as np
-    import matplotlib.pyplot as plt
-
-    def koch_snowflake(order, scale=10):
-        """
-        Return two lists x, y of point coordinates of the Koch snowflake.
-
-        Parameters
-        ----------
-        order : int
-            The recursion depth.
-        scale : float
-            The extent of the snowflake (edge length of the base triangle).
-        """
-
-        def _koch_snowflake_complex(order):
-            if order == 0:
-                # initial triangle
-                angles = np.array([0, 120, 240]) + 90
-                return scale / np.sqrt(3) * np.exp(np.deg2rad(angles) * 1j)
-            else:
-                ZR = 0.5 - 0.5j * np.sqrt(3) / 3
-
-                p1 = _koch_snowflake_complex(order - 1)  # start points
-                p2 = np.roll(p1, shift=-1)  # end points
-                dp = p2 - p1  # connection vectors
-
-                new_points = np.empty(len(p1) * 4, dtype=np.complex128)
-                new_points[::4] = p1
-                new_points[1::4] = p1 + dp / 3
-                new_points[2::4] = p1 + dp * ZR
-                new_points[3::4] = p1 + dp / 3 * 2
-                return new_points
-
-        points = _koch_snowflake_complex(order)
-        x, y = points.real, points.imag
-        return x, y
-
-    test = koch_snowflake(5)
-    print(test)
 
     import numpy as np
     import matplotlib.pyplot as plt
@@ -972,13 +935,13 @@ if __name__ == "__main__":
         "bc_k": {"w": 0, "M": 0, "H": 0},
     }
 
-    # fig, ax = plt.subplots(figsize=(12, 5))
-    # stp.plot_system(ax, s)
-    # stp.plot_load(ax, s)
-    # ax.grid(linestyle=":")
-    # ax.set_axisbelow(True)
-    # # ax.set_ylim(-0.75, 2)
-    # plt.show()
+    fig, ax = plt.subplots(figsize=(12, 5))
+    stp.plot_system(ax, s)
+    stp.plot_load(ax, s)
+    ax.grid(linestyle=":")
+    ax.set_axisbelow(True)
+    # ax.set_ylim(-0.75, 2)
+    plt.show()
 
     # x = np.linspace(0, 2, 100)
     # fig, ax = plt.subplots(figsize=(12, 5))

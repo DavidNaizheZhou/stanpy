@@ -226,8 +226,8 @@ EX02-03 (plotting)
     ax.set_title("[w] = m")
     plt.show()
 
-EX03 Einfeldträger Einzellast
-=============================
+EX03 (todo: testing)
+====================
 EX03-01 (problem) 
 -----------------
 .. jupyter-execute::
@@ -418,7 +418,7 @@ EX04-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_R(ax, x=x, Rx=R_x, annotate_x=[0, [l/2-dx, l/2, l-dx]], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_R(ax, x=x, Rx=R_x, annotate_x=[0, [l/2-dx, l/2], l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-0.8, 1.4)
@@ -431,7 +431,7 @@ EX04-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, [l/2-dx, l/2, l-dx]], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, [l/2-dx, l/2], l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-0.8, 1.2)
