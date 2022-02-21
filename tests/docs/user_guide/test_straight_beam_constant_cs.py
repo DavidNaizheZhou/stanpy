@@ -319,11 +319,11 @@ def test_ex04():
         ]
     )
 
-    np.testing.assert_allclose(signif(Fca[0, :], 6), Fca_sol[0, :])
-    np.testing.assert_allclose(signif(Fca[1, :], 6), Fca_sol[1, :])
-    np.testing.assert_allclose(signif(Fca[2, :], 6), Fca_sol[2, :])
-    np.testing.assert_allclose(signif(Fca[3, :], 6), Fca_sol[3, :])
-    np.testing.assert_allclose(signif(Fca[4, :], 6), Fca_sol[4, :])
+    np.testing.assert_allclose(stp.signif(Fca[0, :], 6), Fca_sol[0, :])
+    np.testing.assert_allclose(stp.signif(Fca[1, :], 6), Fca_sol[1, :])
+    np.testing.assert_allclose(stp.signif(Fca[2, :], 6), Fca_sol[2, :])
+    np.testing.assert_allclose(stp.signif(Fca[3, :], 6), Fca_sol[3, :])
+    np.testing.assert_allclose(stp.signif(Fca[4, :], 6), Fca_sol[4, :])
 
     Fba = stp.tr_R(x=x[1], **s)
     Fba_sol = np.array(

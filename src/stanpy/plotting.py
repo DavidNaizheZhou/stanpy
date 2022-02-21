@@ -11,6 +11,8 @@ __all__ = [
     "plot_roller_support",
     "plot_fixed_support",
     "plot_hinged_support",
+    "plot_w_0",
+    "plot_cs",
 ]
 
 import copy
@@ -26,6 +28,7 @@ from matplotlib.path import Path
 from PIL import Image
 
 import numpy as np
+import sympy as sym
 import stanpy as stp
 
 import importlib.resources as pkg_resources
@@ -287,7 +290,7 @@ def plot_system(ax, *args, **kwargs):
     support = kwargs.pop("support", True)
     hinge_size = kwargs.pop("hinge_size", 22)
     watermark_pos = kwargs.pop("watermark_pos", 4)
-    plot_watermark = kwargs.pop("plot_watermark", True)
+    plot_watermark = kwargs.pop("watermark", True)
     for s in args:
         if "l" in s.keys():
             l: float = s["l"]
@@ -491,7 +494,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
     fill_n = kwargs.pop("fill_n", None)
     fill = kwargs.pop("fill", None)
     alpha = kwargs.pop("alpha", 1)
-    zorder = kwargs.pop("zorder", 2)
+    zorder = kwargs.pop("zorder", 1)
     c = kwargs.pop("c", "black")
     lw = kwargs.pop("lw", 1)
 
@@ -648,7 +651,7 @@ def plot_M(ax, *args, **kwargs):
         fill_n = kwargs.pop("fill_n", None)
         fill = kwargs.pop("fill", None)
         alpha = kwargs.pop("alpha", 1)
-        zorder = kwargs.pop("zorder", 2)
+        zorder = kwargs.pop("zorder", 1)
         c = kwargs.pop("c", "black")
         lw = kwargs.pop("lw", 1)
         if fill != None:
@@ -712,7 +715,7 @@ def plot_M(ax, x: np.ndarray = np.array([]), Mx: np.ndarray = np.array([]), **kw
     fill_n = kwargs.pop("fill_n", None)
     fill = kwargs.pop("fill", None)
     alpha = kwargs.pop("alpha", 1)
-    zorder = kwargs.pop("zorder", 2)
+    zorder = kwargs.pop("zorder", 1)
     c = kwargs.pop("c", "black")
     lw = kwargs.pop("lw", 1)
 
@@ -865,9 +868,64 @@ def plot_psi_0(ax, s, **kwargs):
     ax.plot(xplot, offset - wv / np.max(wv) * 0.5 * scale, c=c)
 
 
+def plot_cs(ax, b_vec, h_vec, ysi=np.array([]), zsi=np.array([]), **kwargs):
+
+    watermark_pos = kwargs.pop("watermark_pos", 4)
+    plot_watermark = kwargs.pop("watermark", True)
+    edgecolor = kwargs.pop("edgecolor", "black")
+    facecolor = kwargs.pop("facecolor", "#111111")
+    alpha = kwargs.pop("alpha", 0.3)
+    hatch = kwargs.pop("hatch", None)
+    lw = kwargs.pop("lw", 1)
+    dy = kwargs.pop("dy", 0)
+    dz = kwargs.pop("dz", 0)
+
+    if isinstance(ysi, list):
+        ysi = np.array(ysi).astype(float)
+    if isinstance(zsi, list):
+        zsi = np.array(zsi).astype(float)
+
+    if isinstance(b_vec, (int, float, sym.core.numbers.Float)) and isinstance(
+        h_vec, (int, float, sym.core.numbers.Float)
+    ):
+        ax.add_patch(
+            Rectangle(
+                (0 + dy, 0 + dz),
+                b_vec,
+                h_vec,
+                facecolor=facecolor,
+                edgecolor=edgecolor,
+                lw=lw,
+                hatch=hatch,
+                alpha=alpha,
+                **kwargs,
+            )
+        )
+    else:
+        for b, h, ys, zs in zip(b_vec, h_vec, ysi, zsi):
+            ax.add_patch(
+                Rectangle(
+                    (ys - b / 2 + dy, zs - h / 2 + dz),
+                    b,
+                    h,
+                    facecolor=facecolor,
+                    edgecolor=edgecolor,
+                    lw=lw,
+                    hatch=hatch,
+                    alpha=alpha,
+                    **kwargs,
+                )
+            )
+
+    if plot_watermark:
+        watermark(ax, watermark_pos)
+
+    ax.set_axisbelow(True)
+
+
 def plot_w_0(ax, s, **kwargs):
     x = kwargs.pop("x", 0)
-    offset = kwargs.pop("offset", 0)
+    offset = kwargs.pop("dy", 0)
     l = s.get("l")
     lw = kwargs.pop("lw", 1)
     c = kwargs.pop("c", "black")
@@ -890,7 +948,7 @@ def plot_w(ax, x: np.ndarray = np.array([]), wx: np.ndarray = np.array([]), **kw
     x_plot[-1] = x[-1]
     scale = kwargs.pop("scale", 1)
     wx_plot[1:-1] = -wx / np.max(np.abs(wx)) * scale
-    zorder = kwargs.pop("zorder", 2)
+    zorder = kwargs.pop("zorder", 1)
     lw = kwargs.pop("lw", 2)
     c = kwargs.pop("c", "black")
     linestyle = kwargs.pop("linestyle", "-")
@@ -913,77 +971,38 @@ def plot_phi(ax, x: np.ndarray = np.array([]), phix: np.ndarray = np.array([]), 
 if __name__ == "__main__":
 
     import numpy as np
-    import matplotlib.pyplot as plt
+    import sympy as sym
     import stanpy as stp
 
-    EI = 32000  # kNm²
-    l = 6  # m
-    P = 10  # kN
-    q = 10  # kN/m
-    N = -1000  # kN
+    x = sym.Symbol("x")
+    l = 4  # m
+    s, t = 0.012, 0.02  # m
+    ba, bb, ha, hb = 0.3, 0.4, 0.3, 0.4  # m
+    hx = ha + (hb - ha) / l * x  # m
+    bx = ba + (bb - ba) / l * x  # m
 
-    w_0 = 0.03
+    b_v = np.array([t, hx - 2 * t, t])
+    h_v = np.array([bx, s, bx])
+    zsi_v = stp.AH_z.dot(h_v)  # von OK
+    ysi_v = stp.AH_y.dot(b_v)  # von Links
 
-    s = {
-        "EI": EI,
-        "l": 6,
-        "q": q,
-        "P1": (P, l / 3),
-        "N": N,
-        "w_0": w_0,
-        "bc_i": {"w": 0, "M": 0},
-        "bc_k": {"w": 0, "M": 0, "H": 0},
-    }
+    cs_props = stp.cs(b=b_v, h=h_v, y_si=ysi_v, z_si=zsi_v)
 
-    fig, ax = plt.subplots(figsize=(12, 5))
-    stp.plot_system(ax, s)
-    stp.plot_load(ax, s)
+    print(cs_props)
+    print("I_y(0) = ", cs_props["I_y"](0))
+    print("I_y(l) = ", cs_props["I_y"](l))
+
+    b_v_fun = sym.lambdify(x, b_v, 'numpy')
+    h_v_fun = sym.lambdify(x, h_v, 'numpy')
+    zsi_v_fun = sym.lambdify(x, zsi_v, 'numpy')
+    ysi_v_fun = sym.lambdify(x, ysi_v, 'numpy')
+
+    offset = 0.2
+    fig, ax = plt.subplots(1)
+    stp.plot_cs(ax, b_v_fun(0), h_v_fun(0), ysi_v_fun(0), zsi_v_fun(0))
+    stp.plot_cs(ax, b_v_fun(l), h_v_fun(l), ysi_v_fun(l), zsi_v_fun(l), dy=0.4)
+
     ax.grid(linestyle=":")
-    ax.set_axisbelow(True)
-    # ax.set_ylim(-0.75, 2)
+    ax.axis('equal')
+
     plt.show()
-
-    # x = np.linspace(0, 2, 100)
-    # fig, ax = plt.subplots(figsize=(12, 5))
-    # ax.plot(x, x, lw=lambda a: a * x / np.max(x))
-    # # ax.set_ylim(-0.75, 2)
-    # plt.show()
-
-    # dx = 1e-9
-    # x = np.linspace(0, l, 500)
-    # annotation = np.array([0, l / 3 - dx, l / 3, l / 2, 2, 3, 4, l - dx])
-    # x = np.sort(np.append(x, annotation))
-
-    # Fxa = stp.tr(s, x=x)
-    # Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
-    # Z_x = Fxa.dot(Z_a)
-
-    # print("Z_a =", Z_a)
-    # print("Z_b =", Z_b)
-
-    # w_x = Z_x[:, 0]
-    # phi_x = Z_x[:, 1]
-    # M_x = Z_x[:, 2]
-    # R_x = Z_x[:, 3]
-
-    # V_x = stp.R_to_Q(x, Z_x, s)
-
-    # scale = 0.5
-    # fig, ax = plt.subplots(figsize=(12, 5))
-    # stp.plot_system(ax, s, watermark_pos=1)
-    # stp.plot_R(
-    #     ax,
-    #     x=x,
-    #     Rx=R_x,
-    #     annotate_x=[0, [l / 3 - dx, l / 3], l / 2, l - dx],
-    #     fill_p="red",
-    #     fill_n="blue",
-    #     scale=scale,
-    #     alpha=0.2,
-    # )
-    # ax.grid(linestyle=":")
-    # ax.set_axisbelow(True)
-    # ax.set_ylim(-1, 1)
-    # ax.set_ylabel("R/Rmax*{}".format(scale))
-    # ax.set_title("[R] = kN")
-    # plt.show()

@@ -14,6 +14,7 @@ EX01 Rechtecksquerschnitt
 .. jupyter-execute::
 
     import sympy as sym
+    import matplotlib.pyplot as plt
     import stanpy as stp
 
     x = sym.Symbol("x")
@@ -26,6 +27,19 @@ EX01 Rechtecksquerschnitt
     print(cs_props)    
     print("I_y(0) = ", cs_props["I_y"](0))    
     print("I_y(l) = ", cs_props["I_y"](l))    
+
+    offset = 0.2
+    fig, ax = plt.subplots()
+    stp.plot_cs(ax, b, hx.subs(x, 0))
+    stp.plot_cs(ax, b, hx.subs(x, l), dy=0.3)
+
+    ax.set_xlim(-offset, b + offset)
+    ax.set_ylim(-offset, float(hx.subs(x, l)) + offset)
+    ax.grid(linestyle=":")
+    ax.axis('equal')
+
+    plt.show()
+
 
 EX02 Zusammengesetzter Rechtecksquerschnitt
 ===========================================
@@ -44,13 +58,29 @@ EX02 Zusammengesetzter Rechtecksquerschnitt
 
     b_v = np.array([b, s, b])
     h_v = np.array([t, hx, t])
-    zsi_v = np.array([t / 2, t + (hx - 2 * t) / 2, t + (hx - 2 * t) + t / 2])  # von OK
+    zsi_v = np.array([t / 2, t + hx/ 2, t + hx + t / 2])  # von OK
+    ysi_v = np.array([b / 2, b / 2, b / 2])  # von Links
 
-    cs_props = stp.cs(b=b_v, h=h_v, zsi=zsi_v)
+    cs_props = stp.cs(b=b_v, h=h_v, y_si=ysi_v, z_si=zsi_v)
 
-    print(cs_props)    
-    print("I_y(0) = ", cs_props["I_y"](0))    
-    print("I_y(l) = ", cs_props["I_y"](l))    
+    print(cs_props)
+    print("I_y(0) = ", cs_props["I_y"](0))
+    print("I_y(l) = ", cs_props["I_y"](l))
+
+    h_v_fun = sym.lambdify(x, h_v, 'numpy')
+    zsi_v_fun = sym.lambdify(x, zsi_v, 'numpy')
+
+    offset = 0.2
+    fig, ax = plt.subplots()
+    stp.plot_cs(ax, b_v, h_v_fun(0), ysi_v, zsi_v_fun(0))
+    stp.plot_cs(ax, b_v, h_v_fun(l), ysi_v, zsi_v_fun(l), dy=0.3)
+
+    ax.set_xlim(-offset, b + offset)
+    ax.set_ylim(-offset, float(hx.subs(x, l)) + offset)
+    ax.grid(linestyle=":")
+    ax.axis('equal')
+
+    plt.show()
 
 EX03 I-Querschnitt
 ==================
@@ -69,12 +99,29 @@ EX03 I-Querschnitt
 
     b_v = np.array([b, s, b])
     h_v = np.array([t, hx - 2 * t, t])
+    zsi_v = stp.AI_z.dot(h_v) # von OK
+    ysi_v = stp.AI_y.dot(b_v)  # von Links
 
-    cs_props = stp.cs(b=b_v, h=h_v)
+    cs_props = stp.cs(b=b_v, h=h_v, y_si=ysi_v, z_si=zsi_v)
 
-    print(cs_props)    
-    print("I_y(0) = ", cs_props["I_y"](0))    
-    print("I_y(l) = ", cs_props["I_y"](l))    
+    print(cs_props)
+    print("I_y(0) = ", cs_props["I_y"](0))
+    print("I_y(l) = ", cs_props["I_y"](l))
+
+    h_v_fun = sym.lambdify(x, h_v, 'numpy')
+    zsi_v_fun = sym.lambdify(x, zsi_v, 'numpy')
+
+    offset = 0.2
+    fig, ax = plt.subplots(1)
+    stp.plot_cs(ax, b_v, h_v_fun(0), ysi_v, zsi_v_fun(0))
+    stp.plot_cs(ax, b_v, h_v_fun(l), ysi_v, zsi_v_fun(l), dy=0.3)
+
+    ax.set_xlim(-offset, b + offset)
+    ax.set_ylim(-offset, float(hx.subs(x, l)) + offset)
+    ax.grid(linestyle=":")
+    ax.axis('equal')
+
+    plt.show()
 
 EX04 H-Querschnitt
 ==================
@@ -92,24 +139,31 @@ EX04 H-Querschnitt
     hx = ha + (hb - ha) / l * x  # m
     bx = ba + (bb - ba) / l * x  # m
 
-    b_v = np.array([bx, s, bx])
-    h_v = np.array([t, hx - 2 * t, t])
+    b_v = np.array([t, hx - 2 * t, t])
+    h_v = np.array([bx, s, bx])
+    zsi_v = stp.AH_z.dot(h_v)  # von OK
+    ysi_v = stp.AH_y.dot(b_v)  # von Links
 
-    Ay = np.array(
-        [
-            [1 / 2, 0, 0],
-            [1, 1 / 2, 0],
-            [1, 1, 1 / 2],
-        ]
-    )
+    cs_props = stp.cs(b=b_v, h=h_v, y_si=ysi_v, z_si=zsi_v)
 
-    y_si = Ay.dot(b_v)
+    print(cs_props)
+    print("I_y(0) = ", cs_props["I_y"](0))
+    print("I_y(l) = ", cs_props["I_y"](l))
 
-    cs_props = stp.cs(b=b_v, h=h_v, y_si=y_si)
+    b_v_fun = sym.lambdify(x, b_v, 'numpy')
+    h_v_fun = sym.lambdify(x, h_v, 'numpy')
+    zsi_v_fun = sym.lambdify(x, zsi_v, 'numpy')
+    ysi_v_fun = sym.lambdify(x, ysi_v, 'numpy')
 
-    print(cs_props)    
-    print("I_y(0) = ", cs_props["I_y"](0))    
-    print("I_y(l) = ", cs_props["I_y"](l))    
+    offset = 0.2
+    fig, ax = plt.subplots(1)
+    stp.plot_cs(ax, b_v_fun(0), h_v_fun(0), ysi_v_fun(0), zsi_v_fun(0))
+    stp.plot_cs(ax, b_v_fun(l), h_v_fun(l), ysi_v_fun(l), zsi_v_fun(l), dy=0.4)
+
+    ax.grid(linestyle=":")
+    ax.axis('equal')
+
+    plt.show()
 
 EX05 Kasten-Querschnitt
 =======================
@@ -128,34 +182,25 @@ EX05 Kasten-Querschnitt
 
     b_v = np.array([b, s, s, b])
     h_v = np.array([t, hx - 2 * t, hx - 2 * t, t])
+    zsi_v = stp.AK_z.dot(h_v)  # von OK
+    ysi_v = stp.AK_y.dot(b_v)  # von Links
 
-    Az = np.array(
-        [
-            [1 / 2, 0, 0, 0],
-            [1, 1 / 2, 0, 0],
-            [1, 0, 1 / 2, 0],
-            [1, 0, 1, 1 / 2],
-        ]
-    )
+    cs_props = stp.cs(b=b_v, h=h_v, y_si=ysi_v, z_si=zsi_v)
 
-    z_si = Az.dot(h_v)
+    h_v_fun = sym.lambdify(x, h_v, 'numpy')
+    zsi_v_fun = sym.lambdify(x, zsi_v, 'numpy')
 
-    Ay = np.array(
-        [
-            [1 / 2, 0, 0, 0],
-            [0, 1 / 2, 0, 0],
-            [1, 0, -1 / 2, 0],
-            [0, 0, 0, 1 / 2],
-        ]
-    )
+    offset = 0.2
+    fig, ax = plt.subplots()
+    stp.plot_cs(ax, b_v, h_v_fun(0), ysi_v, zsi_v_fun(0))
+    stp.plot_cs(ax, b_v, h_v_fun(l), ysi_v, zsi_v_fun(l), dy=0.4)
 
-    y_si = Ay.dot(b_v)
+    ax.set_xlim(-offset, b + offset)
+    ax.set_ylim(-offset, float(hx.subs(x, l)) + offset)
+    ax.grid(linestyle=":")
+    ax.axis('equal')
 
-    cs_props = stp.cs(b=b_v, h=h_v, z_si=z_si, y_si=y_si)
-
-    print(cs_props)    
-    print("I_y(0) = ", cs_props["I_y"](0))    
-    print("I_y(l) = ", cs_props["I_y"](l))    
+    plt.show()
 
 EX06 - Verstärkter I Querschnitt
 ================================
@@ -178,27 +223,27 @@ EX06 - Verstärkter I Querschnitt
 
     b_v = np.array([b, s, b, s, s, s, s])
     h_v = np.array([t, hx - 2 * t, t, h_i, h_i, h_i, h_i])
+    zsi_v = stp.AI_zp.dot(h_v)  # von OK
+    ysi_v = stp.AI_yp.dot(b_v)  # von Links
 
-    Az = np.array(
-        [
-            [1 / 2, 0, 0, 0, 0, 0, 0],
-            [1, 1 / 2, 0, 0, 0, 0, 0],
-            [1, 1, 1 / 2, 0, 0, 0, 0],
-            [1, 0, 0, 0, 1 / 2, 0, 0],
-            [1, 0, 0, 0, 0, 1 / 2, 0],
-            [1, 1, 0, 0, 0, -1 / 2, 0],
-            [1, 1, 0, 0, 0, 0, -1 / 2],
-        ]
-    )
+    cs_props = stp.cs(b=b_v, h=h_v, y_si=ysi_v, z_si=zsi_v)
 
-    z_si = Az.dot(h_v)
+    print(cs_props)
 
-    cs_props = stp.cs(b=b_v, h=h_v, z_si=z_si)
-    
-    print(cs_props)    
-    print("I_y(0) = ", cs_props["I_y"](0))    
-    print("I_y(l) = ", cs_props["I_y"](l))    
+    h_v_fun = sym.lambdify(x, h_v, 'numpy')
+    zsi_v_fun = sym.lambdify(x, zsi_v, 'numpy')
 
+    offset = 0.2
+    fig, ax = plt.subplots()
+    stp.plot_cs(ax, b_v, h_v_fun(0), ysi_v, zsi_v_fun(0))
+    stp.plot_cs(ax, b_v, h_v_fun(l), ysi_v, zsi_v_fun(l), dy=0.4)
+
+    ax.set_xlim(-offset, b + offset)
+    ax.set_ylim(-offset, float(hx.subs(x, l)) + offset)
+    ax.grid(linestyle=":")
+    ax.axis('equal')
+
+    plt.show()
 
 .. meta::
     :description lang=de:

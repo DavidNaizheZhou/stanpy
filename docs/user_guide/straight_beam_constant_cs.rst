@@ -260,8 +260,8 @@ EX03-01 (problem)
     ax.set_ylim(-0.75, 2)
     plt.show()
 
-EX03-02 (solution) 
-------------------
+EX03-02-01 (solution) 
+---------------------
 .. jupyter-execute::
 
     dx = 1e-9

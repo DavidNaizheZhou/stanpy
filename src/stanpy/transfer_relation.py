@@ -67,6 +67,31 @@ def convert_psi0_w0_to_wv(**s):
         return np.zeros(4)
 
 
+def bj_p89(K: float, x: float, j: int):
+    s = j
+    aj = x**j / np.math.factorial(j)
+    bj = aj
+    beta = aj
+    num_iterations = 0
+    while True:
+        s = s + 2
+        beta = beta * K * x**2 / s / (s - 1)
+        bj = bj + beta
+        num_iterations += 1
+        if beta <= np.abs(bj) * 10**-9:
+            break
+    return bj
+
+
+def bj_struktur_p89(x, n: int = 5, **s):
+    gamma, K = gamma_K_function(**s)
+    b_j = np.empty((x.size, n + 1))
+    for i, xi in enumerate(x):
+        for j in range(n + 1):
+            b_j[i, j] = bj_p89(K, xi, j)
+    return b_j
+
+
 def bj_opt2_p89(
     x: float = np.array([]),
     n: int = 5,
@@ -361,7 +386,6 @@ def extract_P_from_beam(**s):
 
 def extract_N_from_beam(**s):
     Nx_array = np.array([value for key, value in s.items() if 'N' in key])
-    print(Nx_array)
     return Nx_array  # column 0: magnitude, column 1: position
 
 
@@ -755,7 +779,6 @@ def tr(
     tr_R_x = np.zeros((x.size, 5, 5))
 
     lengths, x_mask = calc_x_mask(args, x)
-    np.set_printoptions(precision=5)
     for i, s in enumerate(args):
         EI, GA = load_material_parameters(**s)
         if isinstance(EI, (float, int)):
@@ -1275,6 +1298,25 @@ def bj_opt1_p119_forloop(
         return bj
 
 
+def bj(x: np.ndarray = np.array([]), n: int = 5, n_iterations=50, **s):
+    l = s.get("l")
+    if isinstance(x, (int, float)):
+        x = np.array([x])
+    elif x.size == 0:
+        x = np.array([l])
+    EI, GA = load_material_parameters(**s)
+
+    if isinstance(EI, (int, float)):
+        bj = bj_opt2_p89(x=x, n=n, n_iterations=n_iterations, **s)
+    elif isinstance(EI, np.poly1d):
+        Iy = s["cs"]["I_y"]
+        eta = np.flip((Iy / Iy(0)).c)
+        eta, _ = check_and_convert_eta_gamma(eta=eta, **s)
+        _, K = gamma_K_function(**s)
+        bj = bj_opt2_p119_forloop(Ka=K, x=x, eta=eta, n=n, n_iterations=n_iterations)
+    return bj
+
+
 def bj_opt2_p119_forloop(
     Ka: float,
     x: np.ndarray,
@@ -1333,92 +1375,36 @@ def bj_opt2_p119_forloop(
 
 
 if __name__ == "__main__":
-    import sympy as sp
 
-    x_sym = sp.Symbol("x")
-    E = 21e7  # kN/m2
+    import numpy as np
+    import sympy as sym
+    import matplotlib.pyplot as plt
+    import stanpy as stp
+
+    x_sym = sym.Symbol("x")
+    E = 3e7  # kN/m2
     b = 0.2  # m
-    ha, hb = 0.48, 0.18  # m
-    ba, bb = 0.40, 0.20  # m
-    t = 0.02
-    s = 0.012
-    l = 12  # m
-    V = 500  # kN
-    H_star = (10, 8)  # kN
+    ha = hb = 0.3  # m
+    hc = 0.4  # m
+    l1 = 4  # m
+    l2 = 3  # m
+    hx = hb + (hc - hb) / l2 * x_sym
 
-    w_0 = -4.8e-2
-    psi_0 = 1 / 200
+    cs_props1 = stp.cs(b=b, h=ha)
+    s1 = {"E": E, "cs": cs_props1, "q": 10, "l": l1, "bc_i": {"w": 0, "M": 0, "H": 0}}
 
-    einspannung = {"w": 0, "phi": 0}
-    freies_ende = {"M": 0, "V": 0}
+    cs_props2 = stp.cs(b=b, h=hx)
+    s2 = {"E": E, "cs": cs_props2, "q": 10, "l": l2, "bc_k": {"w": 0, "phi": 0}}
 
-    qA = 10
-    qE = 6
-    qx = qA - (qA - qE) / l * x_sym
+    s = [s1, s2]
 
-    hx = ha - (ha - hb) / l * x_sym
-    bx = ba - (ba - bb) / l * x_sym
+    bj(**s1)
+    bj(**s2)
 
-    bi = np.array([bx, s, bx])
-    hi = np.array([t, hx, t])
-    cs_props = stp.cs(b=bi, h=hi, poly_deg=3, poly_range=l)
-    s = {
-        "E": E,
-        "l": l,
-        "cs": cs_props,
-        "P": H_star,
-        "N": -V - 20.3,
-        "bc_i": einspannung,
-        "bc_k": freies_ende,
-        "q": qA,
-        "w_0": w_0,
-        "psi_0": psi_0,
-    }
-
-    x = np.linspace(0, l, 20)
-    dx = 1e-10
-    x_injections = np.array([0, H_star[1] - dx, H_star[1], l - dx])
-    x = np.sort(np.append(x, x_injections).flatten())
-    Fxa = stp.tr(s, x=x)
-    Za, Zc = stp.solve_tr(Fxa[-1], bc_i=s["bc_i"], bc_k=s["bc_k"])
-    Zx = Fxa.dot(Za)
-    Qx = stp.R_to_Q(x, Zx, s)
-
-    fig, (ax, ax2) = plt.subplots(2, figsize=(8, 4))
-
-    Mmax = np.max(Zx[:, 2])
-    xmax = x[Zx[:, 2] == Mmax]
-    stp.plot_system(ax, s)
-    stp.plot_M(
-        ax,
-        x=x,
-        Mx=Zx[:, 2],
-        annotate_x=x_injections,
-        fill_p="red",
-        fill_n="blue",
-        alpha=0.2,
-    )
-    ax.set_ylim(-1.5, 1.7)
-    ax.set_title("[M] = kNm")
-    ax.set_ylabel("-M/Mmax")
-    ax.set_xlabel("x [m]")
-    ax.grid(linestyle="--")
-
-    stp.plot_system(ax, s)
-    stp.plot_R(
-        ax2,
-        x=x,
-        Rx=Zx[:, 3],
-        annotate_x=[0, [H_star[1] - dx, H_star[1]], l - dx],
-        annotate_round=5,
-        fill_p="red",
-        fill_n="blue",
-        alpha=0.2,
-    )
-    ax2.set_ylim(-1.5, 1.7)
-    # ax.set_title("[M] = kNm")
-    # ax.set_ylabel("-M/Mmax")
-    # ax.set_xlabel("x [m]")
-    ax2.grid(linestyle="--")
-
-    plt.show()
+    # fig, ax = plt.subplots(figsize=(12, 5))
+    # stp.plot_system(ax, *s)
+    # stp.plot_load(ax, *s)
+    # ax.grid(linestyle=":")
+    # ax.set_axisbelow(True)
+    # ax.set_ylim(-0.75, 1.0)
+    # plt.show()

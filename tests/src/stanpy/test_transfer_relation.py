@@ -4,7 +4,7 @@ import numpy as np
 # todo: define classes, parametrization
 
 
-def test_gamma_K_function(self):
+def test_gamma_K_function():
     EI = 32000  # kNm²
     GA = 20000  # kNm²
     l = 6  # m
