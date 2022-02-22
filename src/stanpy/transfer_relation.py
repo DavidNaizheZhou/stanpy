@@ -1183,7 +1183,19 @@ def tr_Q_poly(
         return tr.reshape((*x.shape, 5, 5))
 
 
-def bj_struktur_p119(Ka, x, j, n, eta):
+def bj_struktur_p119(x, n: int = 5, ndiff=1, **s):
+    _, K = gamma_K_function(**s)
+    eta = np.flip((s["cs"]["I_y"] / s["cs"]["I_y"](0)).c)
+    eta, _ = stp.check_and_convert_eta_gamma(eta, **s)
+    b_j = np.zeros((ndiff, x.size, n + 1))
+    for i, xi in enumerate(x):
+        for j in range(2, n + 1):
+            for ni in range(ndiff):
+                b_j[ni, i, j] = bj_p119(K, xi, j, ni, eta)
+    return b_j
+
+
+def bj_p119(Ka, x, j, n, eta):
     p = int(eta.size)
     beta = np.zeros(p)
     s = j
@@ -1381,6 +1393,26 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import stanpy as stp
 
+    # x_sym = sym.Symbol("x")
+    # E = 3e7  # kN/m2
+    # b = 0.2  # m
+    # ha = hb = 0.3  # m
+    # hc = 0.4  # m
+    # l1 = 4  # m
+    # l2 = 3  # m
+    # hx = hb + (hc - hb) / l2 * x_sym
+
+    # cs_props1 = stp.cs(b=b, h=ha)
+    # s1 = {"E": E, "cs": cs_props1, "q": 10, "l": l1, "bc_i": {"w": 0, "M": 0, "H": 0}}
+
+    # cs_props2 = stp.cs(b=b, h=hx)
+    # s2 = {"E": E, "cs": cs_props2, "q": 10, "l": l2, "bc_k": {"w": 0, "phi": 0}}
+
+    # s = [s1, s2]
+
+    # bj(**s1)
+    # bj(**s2)
+
     x_sym = sym.Symbol("x")
     E = 3e7  # kN/m2
     b = 0.2  # m
@@ -1390,16 +1422,12 @@ if __name__ == "__main__":
     l2 = 3  # m
     hx = hb + (hc - hb) / l2 * x_sym
 
-    cs_props1 = stp.cs(b=b, h=ha)
-    s1 = {"E": E, "cs": cs_props1, "q": 10, "l": l1, "bc_i": {"w": 0, "M": 0, "H": 0}}
+    cs_props = stp.cs(b=b, h=hx)
+    s = {"E": E, "cs": cs_props, "q": 10, "l": l1, "bc_i": {"w": 0, "M": 0, "H": 0}}
+    K, _ = stp.gamma_K_function(**s)
 
-    cs_props2 = stp.cs(b=b, h=hx)
-    s2 = {"E": E, "cs": cs_props2, "q": 10, "l": l2, "bc_k": {"w": 0, "phi": 0}}
-
-    s = [s1, s2]
-
-    bj(**s1)
-    bj(**s2)
+    # print(bj_p119(K, 1, 1, 1, cs_props["eta_y"]))
+    print(stp.bj_struktur_p119(x=np.array([1]), n=5, ndiff=2, **s))
 
     # fig, ax = plt.subplots(figsize=(12, 5))
     # stp.plot_system(ax, *s)
