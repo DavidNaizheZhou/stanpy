@@ -1,7 +1,11 @@
-Reference
-=========
+=============
+API Reference
+=============
 
 .. toctree::
-    :glob:
+    :maxdepth: 2
+    :caption: PACKAGE
 
-    stanpy*
+    plotting
+    transfer_relation
+    reduction_method

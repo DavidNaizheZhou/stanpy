@@ -8,7 +8,7 @@ Welcome to stanpy's documentation!
    readme
    installation
    user_guide/index
-   api_reference
+   reference/index
    contributing
    history
    authors

@@ -179,108 +179,110 @@ def solve_system(*slabs, x: np.ndarray = np.array([])):
 
 
 if __name__ == "__main__":
+
+    import numpy as np
+    import sympy as sym
+    import stanpy as stp
+    from scipy.signal import argrelextrema
+    import matplotlib.pyplot as plt
+
     EI = 32000  # kN/m2
     l = 6  # m
+    q = 5  # kN/m
 
-    festes_auflager = {"w": 0, "M": 0}
-    einspannung = {"w": 0, "phi": 0}
+    hinged_support = {"w": 0, "M": 0}
+    roller_support = {"w": 0, "M": 0, "H": 0}
+    fixed_support = {"w": 0, "phi": 0}
 
-    s1 = {"EI": EI, "l": l, "bc_i": festes_auflager, "bc_k": {"w": 0}, "q": 10}
-    s2 = {"EI": EI, "l": l, "bc_k": festes_auflager}
+    s1 = {"EI": EI, "l": l, "bc_i": {"w": 0, "phi": 0}, "bc_k": {"M": 0}, "q": q}
+    s2 = {"EI": EI, "l": l, "bc_k": {"w": 0, "phi": 0}, "q": q}
 
-    x_injection = np.array([l, 2 * l])
-    x = np.sort(np.append(np.linspace(0, 2 * l, 100), x_injection))
-    x, Z_x = solve_system(s1, s2, x=x)
+    s = [s1, s2]
 
-    # np.set_printoptions(precision=5)
-    # print(zx[x == 2 * l])
-    print(zx[0])
-    print(zx[-1])
-    print(zx[x == l])
-    quit()
+    dx = 1e-10
+    x = np.sort(np.append(np.linspace(0, 12, 1000), [0 + dx, l, l - dx]))
+    x, Zx = stp.solve_system(*s, x=x)
 
-    x = np.linspace(0, l, 100)
+    print(Zx[0])
+    print(Zx[x == l])
+    print(Zx[-1])
+    local_mins_idx = argrelextrema(Zx[:, 2], np.greater)
 
-    Fba = tr(s1, x=l)
-    Fcb = tr(s2, x=l)
-    Fdc = tr(s3, x=l)
-    Fed = tr(s4, x=l)
+    x_annotate = np.append([0, l, 2 * l], x[local_mins_idx])
+    scale = 0.5
+    fig, (ax, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 15))
+    stp.plot_system(ax, *s, watermark_pos=2)
+    stp.plot_M(
+        ax,
+        x=x,
+        Mx=Zx[:, 2],
+        annotate_x=x_annotate,
+        fill_p="red",
+        fill_n="blue",
+        scale=scale,
+        alpha=0.2,
+    )
 
-    Fba_plus = F_roller_support(Fba, bc_i=festes_auflager)
-    Fca_minus = Fcb.dot(Fba_plus)
-    Fca_plus = F_roller_support(Fca_minus, bc_i=festes_auflager)
-    Fda_minus = Fdc.dot(Fca_plus)
-    Fda_plus = F_roller_support(Fda_minus, bc_i=festes_auflager)
+    ax.set_ylim(-1, 1)
+    ax.set_title("\mathbf{[ M ]~=~kNm}")
+    ax.axis('off')
 
-    Fea = Fed.dot(Fda_plus)
-    print(Fea)
+    stp.plot_system(ax2, *s, watermark=False)
+    stp.plot_R(
+        ax2,
+        x=x,
+        Rx=Zx[:, 3],
+        annotate_x=[0, l - dx, l, 2 * l],
+        fill_p="red",
+        fill_n="blue",
+        scale=scale,
+        alpha=0.2,
+    )
 
-    quit()
+    ax2.set_ylim(-1, 1)
+    ax2.set_title("\mathbf{[ V ]~=~kN}")
+    ax2.axis('off')
 
-    za_fiktiv, ze = solve_tr(Fea, bc_i=festes_auflager, bc_k=einspannung)
-    zd_plus = Fda_plus.dot(za_fiktiv)
-    zd_minus = Fda_plus.dot(za_fiktiv) - np.array([0, 0, 0, 1, 0]) * za_fiktiv
-    zc_minus = Fca_plus.dot(za_fiktiv) - np.array([0, 0, 0, 1, 0]) * za_fiktiv
-    zb_minus = Fba_plus.dot(za_fiktiv) - np.array([0, 0, 0, 1, 0]) * za_fiktiv
+    local_mins_idx = argrelextrema(Zx[:, 0], np.greater)
+    x_annotate = np.append([0, l, 2 * l], x[local_mins_idx])
+    scale = 0.1
+    stp.plot_system(ax3, *s, lw=2, c="gray", linestyle="--", watermark=False)
+    stp.plot_solution(
+        ax3,
+        x=x,
+        y=Zx[:, 0] * 1e2,
+        annotate_x=x_annotate,
+        round=6,
+        lw=3,
+        scale=scale,
+        alpha=0.2,
+        flip_y=True,
+    )
 
-    Fxx = np.zeros((4, 5, 5))
-    Fxx[0, :, :] = Fba
-    Fxx[1, :, :] = Fcb
-    Fxx[2, :, :] = Fdc
-    Fxx[3, :, :] = Fed
+    ax3.set_ylim(-1, 1)
+    ax3.set_title("\mathbf{[ w ]~=~cm}")
+    ax3.axis('off')
 
-    nx = 3 + 2
-    Fxa_plus = np.zeros((nx, 5, 5))
-    Fxa_plus[1, :, :] = Fba_plus
-    Fxa_plus[2, :, :] = Fca_plus
-    Fxa_plus[3, :, :] = Fda_plus
+    local_mins_idx = argrelextrema(Zx[:, 1], np.greater)
+    local_max_idx = argrelextrema(Zx[:, 1], np.less)
+    x_annotate = np.append(np.append([0 + dx, 0, l, 2 * l], x[local_mins_idx]), x[local_max_idx]).flatten()
+    scale = 0.3
+    stp.plot_system(ax4, *s, watermark=False)
+    stp.plot_solution(
+        ax4,
+        x=x,
+        y=Zx[:, 1],
+        annotate_x=x_annotate,
+        round=6,
+        fill_p="red",
+        fill_n="blue",
+        scale=scale,
+        alpha=0.2,
+    )
 
-    dza_fiktiv = np.zeros((Fxa_plus.shape[0], 5))
-    dza_fiktiv[1:-1, :] = -np.array([0, 0, 0, 1, 0]) * za_fiktiv
-    zx_minus = Fxa_plus.dot(za_fiktiv) + dza_fiktiv
-    zx_minus[-1, :] = ze
+    ax4.set_ylim(-1, 1)
+    # ax4.set_title("[ $\mathbf{\\varphi}$ ]")
+    ax4.axis('off')
 
-    zx_plus = np.empty_like(zx_minus)
-    zx_plus[0, :] = za_fiktiv - np.array([0, 0, 0, 1, 0]) * (Fxx[0].dot(za_fiktiv) - zx_minus[1])
-    for i in range(1, zx_minus.shape[0] - 1):
-        zx_plus[i, :] = zx_minus[i] - np.array([0, 0, 0, 1, 0]) * (np.dot(Fxx[i], zx_minus[i]) - zx_minus[i + 1])
-
-    print(zx_minus)
-    print(zx_plus)
-    quit()
-
-    zc_plus = zc_minus - np.array([0, 0, 0, 1, 0]) * (Fdc.dot(zc_minus) - zd_minus)
-    zb_plus = zb_minus - np.array([0, 0, 0, 1, 0]) * (Fcb.dot(zb_minus) - zc_minus)
-    za_plus = za_fiktiv - np.array([0, 0, 0, 1, 0]) * (Fba.dot(za_fiktiv) - zb_minus)
-
-    print(zd_plus)
-    print(zc_plus)
-    print(zb_plus)
-    print(za_plus)
-    quit()
-    # print(ze)
-    zd_minus = zd_plus - Fda_minus.dot(za_fiktiv)
-    # print(zd_plus)
-    # print(zd_minus)
-    quit()
-
-    Fca = Fcb.dot(Fba)
-    A = np.zeros((2, 2))
-    A = Fca_hinge[[0, 1], :-1]
-    b = -Fca_hinge[[0, 1], -1].T
-
-    fa = np.zeros(3)
-    fa[:-1] = np.linalg.solve(A, b).round(15)
-    fa[-1] = 1
-
-    fc = Fca_hinge.dot(fa).round(10)
-    fb_r = Fba_plus.dot(fa).round(10)
-    fb_l = fb_r - Fba_minus.dot(fa).round(10)
-    fa_r = fa + Fba_minus.dot(fb_r[[1, 3, -1]] - Fba[:, [1, 3, -1]].dot(fa)[[1, 3, -1]] - fa)[[1, 3, -1]]
-
-    print(fa_r)
-    print(fb_l)
-    print(fb_r)
-    print(fc)
-
-    quit()
+    plt.tight_layout()
+    plt.show()

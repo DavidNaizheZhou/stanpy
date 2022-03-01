@@ -6,10 +6,47 @@ import copy
 from scipy.special import factorial
 
 
+def gamma_K(**s):
+    """calculates gamma and K with the beam dictionary see Eq. :eq:`gamma_and_K`
+
+    :param \**s:
+        see below
+
+    :Keyword Arguments:
+        * *EI* or *E* and *I* (``float``) --
+          Bending stiffness
+        * *GA* or *G* and *A* (``float``) --
+          Shear stiffness
+        * *N* (``float``) , defaults to 0 --
+          Normal Force (compression - negative)
+
+    :return: gamma, K
+    :rtype: (float, float)
+    """
+
+    return gamma_K_function(**s)
+
+
 def gamma_K_function(**s):
+    """calculates gamma and K with the beam dictionary see Eq. :eq:`gamma_and_K`
+
+    :param \**kwargs:
+        See below
+
+    :Keyword Arguments:
+        * *EI* or *E* and *I* (``float``) --
+          Bending stiffness
+        * *GA* or *G* and *A* (``float``) --
+          Shear stiffness
+        * *N* (``float``) , defaults to 0 --
+          Normal Force (compression - negative)
+
+    :return: gamma, K
+    :rtype: (float, float)
+    """
+
     N = -s.get("N", 0)
     EI, GA = load_material_parameters(**s)
-
     gamma = 1 / (1 - (N / GA))
     K = -gamma * N / EI
     return gamma, K
@@ -67,11 +104,11 @@ def convert_psi0_w0_to_wv(**s):
         return np.zeros(4)
 
 
-def bj_p89(K: float, x: float, j: int):
+def bj_p89(K: float, x: float, j: int):  # brute force
+
     s = j
     aj = x**j / np.math.factorial(j)
-    bj = aj
-    beta = aj
+    bj, beta = aj, aj
     num_iterations = 0
     while True:
         s = s + 2
@@ -83,7 +120,16 @@ def bj_p89(K: float, x: float, j: int):
     return bj
 
 
-def bj_struktur_p89(x, n: int = 5, **s):
+def bj_struktur_p89(x, n: int = 5, **s):  # brute force
+    """_summary_
+
+    :param x: _description_
+    :type x: _type_
+    :param n: _description_, defaults to 5
+    :type n: int, optional
+    :return: _description_
+    :rtype: _type_
+    """
     gamma, K = gamma_K_function(**s)
     b_j = np.empty((x.size, n + 1))
     for i, xi in enumerate(x):
@@ -131,6 +177,31 @@ def bj_recursion_p89(K: float, aj: np.ndarray, bn_end: np.ndarray):
         bn[:, i + 2] = bn[:, i] * K + bn[:, i + 2]
     bn = np.fliplr(bn)
     return bn
+
+
+def aj(x: np.ndarray, n: int = 5):
+    """calculates the aj coefficients published by :cite:z:`1993:rubin`
+
+    :param x: positions where to calculate the bj values
+    :type x: np.ndarray, int, float or list
+    :param n: aj with j from 0 to n (b0, b1, ..., bn) - defaults to 5
+    :type n: int, optional
+    :return: bj coefficients
+    :rtype: `np.ndarray <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`__
+    """
+    if isinstance(x, (int, float, list)):
+        x = np.array([x]).flatten()
+
+    jn = np.arange(n + 1)
+    jn_fact = jn
+    jn_fact[0] = 1
+    jn_fact = jn_fact.cumprod()
+    an = x.reshape(-1, 1) ** jn / jn_fact
+    an[:, 0] = 1
+
+    an[x < 0, :] = 0
+
+    return an
 
 
 def aj_function_x(x, n):
@@ -549,6 +620,17 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
         return load_integrals_Q
 
 
+def load_integral(**s):
+    EI, GA = load_material_parameters(**s)
+    load_integral = None
+    if isinstance(EI, (float, int)):
+        load_integral = stp.calc_load_integral_R(**s)
+    elif isinstance(EI, np.poly1d):
+        load_integral = stp.calc_load_integral_R_poly(**s)
+
+    return load_integral
+
+
 def calc_load_integral_Q_old(
     x: np.ndarray = np.array([]),
     return_bj: bool = False,
@@ -734,7 +816,7 @@ def tr_Q(x: np.ndarray = np.array([]), **s):
     return tr
 
 
-def calc_x_system(s_list, x: np.ndarray = np.array([])):
+def calc_x_system(*s_list, x: np.ndarray = np.array([])):
     if isinstance(s_list, dict):
         s_list = [s_list]
     if x.size == 0:
@@ -755,14 +837,90 @@ def calc_x_mask(s_list: list, x: np.ndarray):
     return lengths, mask
 
 
-# def check_constant_or_polynomial(**s):
-#     if isinstance(s.get("EI",0), sp.
+def get_bc_interfaces(*s):
+    bc_i = [beam.get("bc_i") for beam in s]
+    bc_k = [beam.get("bc_k") for beam in s]
+    bc = np.array(list(zip(bc_i, bc_k))).flatten()
+
+    return bc[1:-1:2]
+
+
+def calc_x_local(*s_list, x: np.ndarray):
+    if isinstance(s_list, dict):
+        s_list = [s_list]
+
+    boundarys = np.zeros((len(s_list), 2))
+    l0 = 0
+    l_array = np.zeros(len(s_list))
+    for i, s in enumerate(s_list):
+        boundarys[i, 0] = l0
+        boundarys[i, 1] = l0 + s["l"]
+        l0 = boundarys[i, 1]
+        l_array[i] = boundarys[i, 1]
+
+    x_local = []
+    if (x == l_array).all():
+        for i, s in enumerate(s_list):
+            x_local.append(x[i] - boundarys[i, 0])
+    else:
+        for i, s in enumerate(s_list):
+            if i < len(s_list) - 1:
+                mask = (x >= boundarys[i, 0]) & (x < boundarys[i, 1])
+            elif i == len(s_list) - 1:
+                mask = (x >= boundarys[i, 0]) & (x <= boundarys[i, 1])
+            x_local.append(x[mask] - boundarys[i, 0])
+    return x_local
+
+
+def tr_local(*args, x: np.ndarray = np.array([])):
+    if isinstance(args, dict):
+        args = [args]
+
+    if isinstance(x, (int, float)):
+        x = np.array([x])
+
+    if x.size == 0:
+        x = stp.calc_x_system(*args)
+
+    x_local = calc_x_local(*args, x=x)
+    tr_x = np.zeros((x.size, 5, 5))
+    local_slice = 0
+
+    for i, s in enumerate(args):
+        tr_x[local_slice : local_slice + x_local[i].size] = tr(s, x=x_local[i])
+        local_slice += x_local[i].size
+    return tr_x
+
+
+def tr_reduction(*args, x: np.ndarray = np.array([])):
+    interfaces = get_bc_interfaces(*args)
+    if len(interfaces) == 1 and interfaces == [None]:
+        raise ValueError("There are no boundary conditions on the interface")
+    else:
+        if isinstance(args, dict):
+            args = [args]
+
+        if isinstance(x, (int, float)):
+            x = np.array([x])
+
+        if x.size == 0:
+            x = stp.calc_x_system(*args)
+
+        tr_x_local = tr_local(*args, x=x)
+    return tr_local
+
+
+def apply_reduction_method(*args):
+    interface = get_bc_interfaces(*args)
+    if len(interface) == 0:
+        return False
+    elif len(interface) >= 1:
+        return True
 
 
 def tr(
     *args,
     x: np.ndarray = np.array([]),
-    side="+",
 ):
 
     if isinstance(args, dict):
@@ -776,17 +934,28 @@ def tr(
 
     tr_R_ends = np.zeros((len(args) + 1, 5, 5))
     tr_R_ends[0, :, :] = np.eye(5, 5)
+
     tr_R_x = np.zeros((x.size, 5, 5))
 
     lengths, x_mask = calc_x_mask(args, x)
+
     for i, s in enumerate(args):
         EI, GA = load_material_parameters(**s)
-        if isinstance(EI, (float, int)):
-            tr_R_ends[i + 1, :, :] = tr_R(**s).dot(tr_R_ends[i, :, :])
-            tr_R_x[x_mask[i], :, :] = tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
-        elif isinstance(EI, np.poly1d):
-            tr_R_ends[i + 1, :, :] = tr_R_poly(**s).dot(tr_R_ends[i, :, :])
-            tr_R_x[x_mask[i], :, :] = tr_R_poly(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+        if ~apply_reduction_method(*args):
+            if isinstance(EI, (float, int)):
+                tr_R_ends[i + 1, :, :] = tr_R(**s).dot(tr_R_ends[i, :, :])
+                tr_R_x[x_mask[i], :, :] = tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+            elif isinstance(EI, np.poly1d):
+                tr_R_ends[i + 1, :, :] = tr_R_poly(**s).dot(tr_R_ends[i, :, :])
+                tr_R_x[x_mask[i], :, :] = tr_R_poly(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+        else:
+            if isinstance(EI, (float, int)):
+                tr_R_ends[i + 1, :, :] = tr_R(**s)
+                tr_R_x[x_mask[i], :, :] = tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+            elif isinstance(EI, np.poly1d):
+                tr_R_ends[i + 1, :, :] = tr_R_poly(**s)
+                tr_R_x[x_mask[i], :, :] = tr_R_poly(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+
     if x.size == 1:
         tr_R_x = tr_R_x.reshape((5, 5))
 
@@ -932,6 +1101,91 @@ def load_boundary_conditions(**s):
     bc_i_vec = np.array([bc_i["w"], bc_i["phi"], bc_i["M"], bc_i["V"]])
     bc_k_vec = np.array([bc_k["w"], bc_k["phi"], bc_k["M"], bc_k["V"]])
     return bc_i_vec, bc_k_vec
+
+
+def aii_00(wji=0, **s):
+
+    gamma, K = stp.gamma_K_function(**s)
+    b = stp.bj(**s)
+    EI, GA = stp.load_material_parameters(**s)
+    b[3] = b[3] - EI / GA * b[1]
+    li = stp.load_integral(**s)
+    return np.array(
+        [
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0],
+            [EI / b[3] / gamma, EI * b[1] / b[3], -b[2] / b[3], 0, EI * (li[0] - wji) / b[3] / gamma],
+            [0, 0, 0, 0, 1],
+        ]
+    )
+
+
+def aii_01(wji=0, **s):
+
+    gamma, K = stp.gamma_K_function(**s)
+    b = stp.bj(**s)
+    EI, GA = stp.load_material_parameters(**s)
+    b3 = b[3] - EI / GA * b[1]
+    li = stp.load_integral(**s)
+    return np.array(
+        [
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [EI / b[2] / gamma, EI * b[1] / b[2], 0, -b[3] / b[2], EI * (li[0] - wji) / b[2] / gamma],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 1],
+        ]
+    )
+
+
+def aii_10(Mji=0, **s):
+
+    gamma, K = stp.gamma_K_function(**s)
+    b = stp.bj(**s)
+    EI, GA = stp.load_material_parameters(**s)
+    b3 = b[3] - EI / GA * b[1]
+    li = stp.load_integral(**s)
+    N = s.get("N", 0)
+    return np.array(
+        [
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [0, 0, 1, 0, 0],
+            [0, -N, -b[0] / b[1] / gamma, 0, (Mji - li[2]) / b[1] / gamma],
+            [0, 0, 0, 0, 1],
+        ]
+    )
+
+
+def Zi_reverse_11(Mji=0, **s):
+    gamma, K = stp.gamma_K_function(**s)
+    b = stp.bj(**s)
+    li = stp.load_integral(**s)
+    N = s.get("N", 0)
+    return None
+
+
+def aii_11(Mji=0, **s):
+    gamma, K = stp.gamma_K_function(**s)
+    b = stp.bj(**s)
+    EI, GA = stp.load_material_parameters(**s)
+    b3 = b[3] - EI / GA * b[1]
+    li = stp.load_integral(**s)
+    N = s.get("N", 0)
+    return np.array(
+        [
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [0, -N * b[1] * gamma / b[0], 0, -b[1] * gamma / b[0], (Mji - li[2]) / b[0]],
+            [0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 1],
+        ]
+    )
+
+
+def solve_tr_red(*args, Fxi):
+    pass
 
 
 def solve_tr(Fki, **s):
@@ -1310,22 +1564,34 @@ def bj_opt1_p119_forloop(
         return bj
 
 
-def bj(x: np.ndarray = np.array([]), n: int = 5, n_iterations=50, **s):
+def bj(x: np.ndarray = np.array([]), n: int = 5, t=50, **s):
+    """calculates the bj coefficients for straight beams with constant or non-constant cross sections published by :cite:t:`1993:rubin`
+
+    :param x: positions where to calculate the bj values - when empty then bj at position will be calculated, defaults to np.array([])
+    :type x: np.ndarray, optional
+    :param n: bj with j from 0 to n (b0, b1, ..., bn) - defaults to 5
+    :type n: int, optional
+    :param t: number of terms t in recursion formular, defaults to 50
+    :type t: int, optional
+    :return: bj functions
+    :rtype: `np.ndarray <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`__
+    """
+
     l = s.get("l")
-    if isinstance(x, (int, float)):
-        x = np.array([x])
+    if isinstance(x, (int, float, list)):
+        x = np.array([x]).flatten()
     elif x.size == 0:
         x = np.array([l])
     EI, GA = load_material_parameters(**s)
 
     if isinstance(EI, (int, float)):
-        bj = bj_opt2_p89(x=x, n=n, n_iterations=n_iterations, **s)
+        bj = bj_opt2_p89(x=x, n=n, n_iterations=t, **s)
     elif isinstance(EI, np.poly1d):
         Iy = s["cs"]["I_y"]
         eta = np.flip((Iy / Iy(0)).c)
         eta, _ = check_and_convert_eta_gamma(eta=eta, **s)
         _, K = gamma_K_function(**s)
-        bj = bj_opt2_p119_forloop(Ka=K, x=x, eta=eta, n=n, n_iterations=n_iterations)
+        bj = bj_opt2_p119_forloop(Ka=K, x=x, eta=eta, n=n, n_iterations=t)
     return bj
 
 
@@ -1393,46 +1659,38 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import stanpy as stp
 
-    # x_sym = sym.Symbol("x")
-    # E = 3e7  # kN/m2
-    # b = 0.2  # m
-    # ha = hb = 0.3  # m
-    # hc = 0.4  # m
-    # l1 = 4  # m
-    # l2 = 3  # m
-    # hx = hb + (hc - hb) / l2 * x_sym
+    EI = 32000  # kN/m2
+    l = 6  # m
+    q = 5  # kN/m
 
-    # cs_props1 = stp.cs(b=b, h=ha)
-    # s1 = {"E": E, "cs": cs_props1, "q": 10, "l": l1, "bc_i": {"w": 0, "M": 0, "H": 0}}
+    hinged_support = {"w": 0, "M": 0}
+    roller_support = {"w": 0, "M": 0, "H": 0}
+    fixed_support = {"w": 0, "phi": 0}
 
-    # cs_props2 = stp.cs(b=b, h=hx)
-    # s2 = {"E": E, "cs": cs_props2, "q": 10, "l": l2, "bc_k": {"w": 0, "phi": 0}}
+    # s1 = {"EI": EI, "l": l, "bc_i": {"w": 0, "M": 0}, "q": q}
+    s1 = {"EI": EI, "l": l, "bc_i": {"w": 0, "M": 0}, "q": q}
+    s2 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "q": q}
+    s3 = {"EI": EI, "l": l, "bc_k": {"w": 0, "phi": 0}, "q": q}
 
-    # s = [s1, s2]
+    s = [s1, s2, s3]
 
-    # bj(**s1)
-    # bj(**s2)
+    dx = 1e-10
+    x = np.linspace(0, 3 * l, 3 * l)
 
-    x_sym = sym.Symbol("x")
-    E = 3e7  # kN/m2
-    b = 0.2  # m
-    ha = hb = 0.3  # m
-    hc = 0.4  # m
-    l1 = 4  # m
-    l2 = 3  # m
-    hx = hb + (hc - hb) / l2 * x_sym
+    tr = tr_local(*s)
+    # x, Zx = stp.solve_system(*s, x=x)
 
-    cs_props = stp.cs(b=b, h=hx)
-    s = {"E": E, "cs": cs_props, "q": 10, "l": l1, "bc_i": {"w": 0, "M": 0, "H": 0}}
-    K, _ = stp.gamma_K_function(**s)
-
-    # print(bj_p119(K, 1, 1, 1, cs_props["eta_y"]))
-    print(stp.bj_struktur_p119(x=np.array([1]), n=5, ndiff=2, **s))
-
-    # fig, ax = plt.subplots(figsize=(12, 5))
-    # stp.plot_system(ax, *s)
-    # stp.plot_load(ax, *s)
-    # ax.grid(linestyle=":")
-    # ax.set_axisbelow(True)
-    # ax.set_ylim(-0.75, 1.0)
+    # fig, ax = plt.subplots(figsize=(12, 4))
+    # stp.plot_system(ax, *s, lw=3)
+    # stp.plot_load(ax, *s, q_scale=0.3)
+    # ax.set_ylim(-0.4,0.4)
+    # ax.annotate("i", (0,  -0.2), fontsize=16, ha='center')
+    # ax.text(3, -0.08, "1", fontsize=16)
+    # ax.annotate("j", (6,  -0.2), fontsize=16, ha='center')
+    # ax.text(9, -0.08, "2", fontsize=16)
+    # ax.annotate("k", (12, -0.2), fontsize=16, ha='center')
+    # ax.annotate("q", (12.22, 0.12), fontsize=16, ha='center')
+    # # ax.grid(linestyle=":")
+    # ax.axis('off')
+    # plt.savefig("bsp01_angabe", dpi=600)
     # plt.show()

@@ -13,6 +13,7 @@ __all__ = [
     "plot_hinged_support",
     "plot_w_0",
     "plot_cs",
+    "plot_solution",
 ]
 
 import copy
@@ -82,10 +83,14 @@ load_path = Path(verts, codes)
 
 
 def watermark(ax, watermark_pos=4):
-    # if "user_guide" in os.listdir():
-    #     img = Image.open(os.path.join("user_guide", "static", "stanpy_logo_2-removebg.png"))
-    # else:
-    #     img = Image.open(os.path.join("src", "stanpy", "static", "stanpy_logo_2-removebg.png"))
+    """adds a `AnchoredOffsetbox <https://matplotlib.org/stable/api/offsetbox_api.html>`__ to the given axis
+
+    :param ax: axis for plotting
+    :type ax: `matplotlib.pyplot.axis <https://matplotlib.org/3.5.1/api/_as_gen/matplotlib.pyplot.axis.html>`__
+    :param watermark_pos: defines the Position of the watermark 1-top right, 2-top left, 3-bottom left, 4-bottom right, defaults to 4
+    :type watermark_pos: int, optional
+    """
+
     with pkg_resources.path(stp.static, 'stanpy_logo_2-removebg.png') as path:
         img = Image.open(path)
 
@@ -129,11 +134,12 @@ def plot_beam(ax, xi, yi, xk, yk, **kwargs):
 
 
 def plot_roller_support(ax, x, y, **kwargs):
+    s = kwargs.get("s", 30)
     ax.scatter(
         [x],
         [y],
         marker=versch_auflager,
-        s=30**2,
+        s=s**2,
         edgecolors="black",
         facecolors="white",
     )  # auflager
@@ -149,23 +155,25 @@ def plot_roller_support(ax, x, y, **kwargs):
 
 
 def plot_roller_support_half(ax, x, y, **kwargs):
+    s = kwargs.get("s", 30)
     ax.scatter(
         [x],
         [y],
         marker=versch_auflager,
-        s=30**2,
+        s=s**2,
         edgecolors="black",
         facecolors="white",
     )
 
 
 def plot_fixed_support(ax, x, y, side, **kwargs):
+    s = kwargs.get("s", 30)
     if side == "right":
         ax.scatter(
             [x],
             [y],
             marker=fixed_support_path_right,
-            s=22**2,
+            s=(22 / 30 * s) ** 2,
             edgecolors="black",
             facecolors="black",
         )
@@ -174,18 +182,19 @@ def plot_fixed_support(ax, x, y, side, **kwargs):
             [x],
             [y],
             marker=fixed_support_path_left,
-            s=22**2,
+            s=(22 / 30 * s) ** 2,
             edgecolors="black",
             facecolors="black",
         )
 
 
 def plot_hinged_support(ax, x, y, **kwargs):
+    s = kwargs.get("s", 30)
     ax.scatter(
         [x],
         [y],
         marker=festes_auflager,
-        s=22**2,
+        s=(22 / 30 * s) ** 2,
         edgecolors="black",
         facecolors="white",
     )
@@ -241,39 +250,60 @@ def plot_uniformly_distributed_load_patch(ax, xi, yi, xk, yk, q, **kwargs):
 
 def plot_point_load(ax, x, y, magnitude, **kwargs):
     dy_P = kwargs.pop("dy_P", 0)
-    ax.arrow(
-        x,
-        y + magnitude / 2 + dy_P,
-        0,
-        -magnitude / 2,
-        head_width=0.05,
+    marker_size = kwargs.pop("marker_size", 12)
+    ax.plot(
+        [x, x],
+        [y, y + magnitude / 2 + dy_P],
         color=kwargs.get("c", "black"),
     )
+    ax.scatter(x, y, color=kwargs.get("c", "black"), marker=11, s=marker_size)
+    # ax.arrow(
+    #     x,
+    #     y + magnitude / 2 + dy_P,
+    #     0,
+    #     -magnitude / 2,
+    #     head_width=0.05,
+    #     color=kwargs.get("c", "black"),
+    # )
 
 
 def plot_point_load_H(ax, x, y, magnitude, **kwargs):
     dx_N = kwargs.pop("dx_N", 0.1)
     dy_N = kwargs.pop("dy_N", 0)
     scale = kwargs.pop("scale_N", 1)
+    marker_size = kwargs.pop("marker_size", 20)
     direction = kwargs.pop("direction", "left")
     if direction == "left":
-        ax.arrow(
-            x + scale + dx_N,
-            y + dy_N,
-            -scale,
-            0,
-            head_width=0.05,
+        ax.plot(
+            [x + scale + dx_N, x + dx_N],
+            [y + dy_N, y + dy_N],
             color=kwargs.get("c", "black"),
         )
+        ax.scatter(x + dx_N, y + dy_N, color=kwargs.get("c", "black"), marker=8, s=marker_size)
+        # ax.arrow(
+        #     x + scale + dx_N,
+        #     y + dy_N,
+        #     -scale,
+        #     0,
+        #     head_width=0.05,
+        #     color=kwargs.get("c", "black"),
+        # )
     elif direction == "right":
-        ax.arrow(
-            x - scale - dx_N,
-            y + dy_N,
-            scale,
-            0,
-            head_width=0.05,
+
+        ax.plot(
+            [x - scale - dx_N, x + dx_N],
+            [y + dy_N, y + dy_N],
             color=kwargs.get("c", "black"),
         )
+        ax.scatter(x - scale + dx_N, y + dy_N, color=kwargs.get("c", "black"), marker=8, s=marker_size)
+        #       ax.arrow(
+        #     x - scale - dx_N,
+        #     y + dy_N,
+        #     scale,
+        #     0,
+        #     head_width=0.05,
+        #     color=kwargs.get("c", "black"),
+        # )
 
 
 # def plot_slab(ax,xi,yi,**kwargs):
@@ -283,14 +313,21 @@ def plot_point_load_H(ax, x, y, magnitude, **kwargs):
 
 
 def plot_system(ax, *args, **kwargs):
+    """plotting of the system to the given axis
+
+    :param ax: axis for plotting
+    :type ax: `matplotlib.pyplot.axis <https://matplotlib.org/3.5.1/api/_as_gen/matplotlib.pyplot.axis.html>`__
+    """
     xi = 0
     yi = 0
     xk = 0
     yk = 0
     support = kwargs.pop("support", True)
     hinge_size = kwargs.pop("hinge_size", 22)
+    hinge = kwargs.pop("hinge", True)
     watermark_pos = kwargs.pop("watermark_pos", 4)
     plot_watermark = kwargs.pop("watermark", True)
+    size = kwargs.pop("s", 30)
     for s in args:
         if "l" in s.keys():
             l: float = s["l"]
@@ -300,31 +337,31 @@ def plot_system(ax, *args, **kwargs):
         if support:
             if "bc_i" in s.keys():
                 if all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w", "M", "H"]]):
-                    plot_roller_support(ax, xi, yi, hinge_size=hinge_size)
+                    plot_roller_support(ax, xi, yi, hinge_size=hinge_size, s=size)
                 elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w", "M"]]):
-                    plot_hinged_support(ax, xi, yi, hinge_size=hinge_size)
+                    plot_hinged_support(ax, xi, yi, hinge_size=hinge_size, s=size)
                 elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w", "phi"]]):
-                    plot_fixed_support(ax, xi, yi, "left")
+                    plot_fixed_support(ax, xi, yi, "left", s=size)
                 elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["M", "V"]]):
                     pass
                 elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w"]]):
-                    plot_roller_support_half(ax, xi, yi, hinge_size=hinge_size)
-                elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["M"]]):
-                    plot_hinge(ax, xi, yi, hinge_size=hinge_size)
+                    plot_roller_support_half(ax, xi, yi, hinge_size=hinge_size, s=size)
+                elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["M"]]) and hinge:
+                    plot_hinge(ax, xi, yi, hinge_size=hinge_size, s=size)
 
             if "bc_k" in s.keys():
                 if all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["w", "M", "H"]]):
-                    plot_roller_support(ax, xk, yk, hinge_size=hinge_size)
+                    plot_roller_support(ax, xk, yk, hinge_size=hinge_size, s=size)
                 elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["w", "M"]]):
-                    plot_hinged_support(ax, xk, yk, hinge_size=hinge_size)
+                    plot_hinged_support(ax, xk, yk, hinge_size=hinge_size, s=size)
                 elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["w", "phi"]]):
-                    plot_fixed_support(ax, xk, yk, "right")
+                    plot_fixed_support(ax, xk, yk, "right", s=size)
                 elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["M", "V"]]):
                     pass
                 elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["w"]]):
-                    plot_roller_support_half(ax, xk, yk, hinge_size=hinge_size)
-                elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["M"]]):
-                    plot_hinge(ax, xk, yk, hinge_size=hinge_size)
+                    plot_roller_support_half(ax, xk, yk, hinge_size=hinge_size, s=size)
+                elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["M"]]) and hinge:
+                    plot_hinge(ax, xk, yk, hinge_size=hinge_size, s=size)
 
         xi = xk
         yi = yk
@@ -347,9 +384,11 @@ def plot_load(ax, *args, **kwargs):
     dy_N = kwargs.pop("dy_N", 0)
     P_scale = kwargs.pop("P_scale", 1)
     N_scale = kwargs.pop("N_scale", 1)
+    q_scale = kwargs.pop("q_scale", 1)
+    q_linspace = kwargs.pop("q_linspace", 10)
 
-    offset0_positiv = offset_positiv = copy.copy(kwargs.pop("offset", 0.3))
-    offset0_negativ = offset_negativ = -copy.copy(kwargs.pop("offset", 0.3))
+    offset0_positiv = offset_positiv = copy.copy(kwargs.pop("offset", 0.1))
+    offset0_negativ = offset_negativ = -copy.copy(kwargs.pop("offset", 0.1))
     q_array = np.zeros(len(args))
     P_array_all = np.array([])
     for i, s in enumerate(args):
@@ -365,8 +404,9 @@ def plot_load(ax, *args, **kwargs):
         yk = yi
         dl = 0.25
         if "q" in s.keys():
-            x = np.linspace(xi, xk, int(l / dl))
-            q_height = q_array[i] / np.max(np.abs(q_array)) / 4
+            x = np.linspace(xi, xk, q_linspace)
+            # x = np.linspace(xi, xk, int(l / dl))
+            q_height = (q_array[i] / np.max(np.abs(q_array)) / 4) * q_scale
             if q_array[i] > 0:
                 plot_load_distribution(
                     ax,
@@ -444,7 +484,7 @@ def plot_load_distribution(ax, x, y, thickness, q_offset=0, **kwargs):
     lower_line = y + q_offset
     upper_line = y + q_offset + thickness
 
-    size_arrow_head = thickness / 4
+    size_arrow_head = 0 / 4
 
     code_arrows = np.zeros((x.size, 5, 1))
     code_arrows[:, :, 0] = np.array([Path.MOVETO, Path.LINETO, Path.LINETO, Path.LINETO, Path.LINETO])
@@ -469,14 +509,23 @@ def plot_load_distribution(ax, x, y, thickness, q_offset=0, **kwargs):
     codes[0] = codes[x.size] = Path.MOVETO
     codes[2 * x.size :] = code_arrows
     # codes = np.full(len(vertices), Path.LINETO)
-
+    # ax.scatter(x, y, marker="v")
     # path = Path(arrow, codes)
     path = Path(vertices, codes)
     ax.add_patch(PathPatch(path, facecolor=kwargs.pop("facecolor", "black"), **kwargs))
+    marker_size = kwargs.pop("marker_size", 12)
+    # ax.scatter(x, y, marker=7, c=kwargs.get("c", "black"), s=marker_size)
 
 
 def plot_V(ax, x: np.ndarray = np.array([]), Vx: np.ndarray = np.array([]), **kwargs):
     plot_R(ax=ax, x=x, Rx=Vx, **kwargs)
+
+
+def plot_solution(ax, x: np.ndarray = np.array([]), y: np.ndarray = np.array([]), flip_y=False, **kwargs):
+    if flip_y:
+        plot_M(ax=ax, x=x, Mx=y, **kwargs)
+    else:
+        plot_R(ax=ax, x=x, Rx=y, **kwargs)
 
 
 def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kwargs):
@@ -500,7 +549,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
 
     annotate_x = kwargs.pop("annotate_x", np.array([]))
     annotate_text = kwargs.pop("annotate_text", np.array([]))
-    annotate_round = kwargs.pop("annotate_round", 3)
+    annotate_round = kwargs.pop("round", 3)
     if isinstance(annotate_x, int) or isinstance(annotate_x, float):
         annotate_x = np.array([annotate_x]).flatten()
     if isinstance(annotate_text, list):
@@ -569,6 +618,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
                 0,
                 np.max(Rx_plot[mask_plot]),
                 color=c,
+                zorder=zorder,
                 **kwargs,
                 lw=1,
             )
@@ -605,7 +655,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
             mask = x == annotation
 
             if mask.any():
-                ax.vlines(annotation, 0, np.max(Rx_plot[mask_plot]), color=c, **kwargs, lw=1)
+                ax.vlines(annotation, 0, np.max(Rx_plot[mask_plot]), color=c, zorder=zorder, **kwargs, lw=1)
 
                 annotation_pos_y = np.max(Rx_plot[mask_plot])
                 if annotation_pos_y > 0:
@@ -721,7 +771,7 @@ def plot_M(ax, x: np.ndarray = np.array([]), Mx: np.ndarray = np.array([]), **kw
 
     annotate_x = kwargs.pop("annotate_x", np.array([]))
     annotate_text = kwargs.pop("annotate_text", np.array([]))
-    annotate_round = kwargs.pop("annotate_round", 3)
+    annotate_round = kwargs.pop("round", 3)
     if isinstance(annotate_x, int) or isinstance(annotate_x, float):
         annotate_x = np.array([annotate_x]).flatten()
     if isinstance(annotate_text, list):
@@ -793,6 +843,7 @@ def plot_M(ax, x: np.ndarray = np.array([]), Mx: np.ndarray = np.array([]), **kw
                 np.max(mx_plot[mask_plot]),
                 color=c,
                 **kwargs,
+                zorder=zorder,
                 lw=1,
             )
             annotation_pos_y = np.max(mx_plot[mask_plot])
@@ -822,7 +873,7 @@ def plot_M(ax, x: np.ndarray = np.array([]), Mx: np.ndarray = np.array([]), **kw
             mask_plot = x_plot == annotation
             mask = x == annotation
             if mask.any():
-                ax.vlines(annotation, 0, np.max(mx_plot[mask_plot]), color=c, **kwargs, lw=1)
+                ax.vlines(annotation, 0, np.max(mx_plot[mask_plot]), color=c, zorder=zorder, **kwargs, lw=1)
                 annotation_pos_y = np.max(mx_plot[mask_plot])
                 if annotation_pos_y < 0:
                     ax.annotate(
@@ -952,6 +1003,11 @@ def plot_w(ax, x: np.ndarray = np.array([]), wx: np.ndarray = np.array([]), **kw
     lw = kwargs.pop("lw", 2)
     c = kwargs.pop("c", "black")
     linestyle = kwargs.pop("linestyle", "-")
+    hinges = kwargs.pop("hinge", [])
+    hinge_size = kwargs.pop("hinge_size", 22)
+    if len(hinges) > 0:
+        for hinge_x in hinges:
+            ax.plot_hinge(ax, hinge_x, wx[x == hinge_x], hinge_size=hinge_size)
     ax.plot(x_plot, wx_plot, zorder=zorder, lw=lw, c=c, linestyle=linestyle, **kwargs)
 
 
@@ -974,35 +1030,27 @@ if __name__ == "__main__":
     import sympy as sym
     import stanpy as stp
 
-    x = sym.Symbol("x")
+    EI = 32000  # kN/m2
+    P = 5  # kN
+    q = 4  # kN/m
     l = 4  # m
-    s, t = 0.012, 0.02  # m
-    ba, bb, ha, hb = 0.3, 0.4, 0.3, 0.4  # m
-    hx = ha + (hb - ha) / l * x  # m
-    bx = ba + (bb - ba) / l * x  # m
 
-    b_v = np.array([t, hx - 2 * t, t])
-    h_v = np.array([bx, s, bx])
-    zsi_v = stp.AH_z.dot(h_v)  # von OK
-    ysi_v = stp.AH_y.dot(b_v)  # von Links
+    roller_support = {"w": 0, "M": 0, "H": 0}
+    fixed_support = {"w": 0, "phi": 0}
+    hinge = {"M": 0}
 
-    cs_props = stp.cs(b=b_v, h=h_v, y_si=ysi_v, z_si=zsi_v)
+    s0 = {"EI": EI, "l": l, "bc_i": fixed_support, "bc_k": {"w": 0}}
+    s1 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "q": q}
+    s2 = {"EI": EI, "l": l, "bc_k": {"w": 0}}
+    s3 = {"EI": EI, "l": l, "bc_k": hinge, "q": q, "P": (P, l)}
+    s4 = {"EI": EI, "l": l, "bc_k": {"w": 0}}
+    s5 = {"EI": EI, "l": l, "bc_k": hinge}
+    s6 = {"EI": EI, "l": l, "bc_k": roller_support, "P": (P, l / 2), "N": (10, l)}
 
-    print(cs_props)
-    print("I_y(0) = ", cs_props["I_y"](0))
-    print("I_y(l) = ", cs_props["I_y"](l))
+    s = [s0, s1, s2, s3, s4, s5, s6]
 
-    b_v_fun = sym.lambdify(x, b_v, 'numpy')
-    h_v_fun = sym.lambdify(x, h_v, 'numpy')
-    zsi_v_fun = sym.lambdify(x, zsi_v, 'numpy')
-    ysi_v_fun = sym.lambdify(x, ysi_v, 'numpy')
-
-    offset = 0.2
-    fig, ax = plt.subplots(1)
-    stp.plot_cs(ax, b_v_fun(0), h_v_fun(0), ysi_v_fun(0), zsi_v_fun(0))
-    stp.plot_cs(ax, b_v_fun(l), h_v_fun(l), ysi_v_fun(l), zsi_v_fun(l), dy=0.4)
-
-    ax.grid(linestyle=":")
-    ax.axis('equal')
-
+    fig, ax = plt.subplots(figsize=(12, 5))
+    stp.plot_system(ax, s=22, *s)
+    stp.plot_load(ax, *s, P_scale=0.5, q_scale=0.5)
+    ax.set_ylim(-0.5, 1)
     plt.show()

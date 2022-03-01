@@ -324,8 +324,10 @@ EX03-03 (plotting)
     ax.set_title("[w] = m")
     plt.show()
 
+Grundlagen
+==========
 
-
+Ablösung einer Unbekannten bei einer einwertigen Bindung zur Erscheibe
 
 
 

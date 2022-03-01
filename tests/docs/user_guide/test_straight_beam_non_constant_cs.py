@@ -29,14 +29,15 @@ def test_ex01():
     s2 = {"E": E, "cs": cs_props2, "q": 10, "l": l2, "bc_k": {"w": 0, "phi": 0}}
 
     gamma, K = stp.gamma_K_function(**s2)
-    bj2 = stp.bj_struktur_p119(K, l2, 2, 0, cs_props2["eta_y"])
-    bj2s = stp.bj_struktur_p119(K, l2, 2, 1, cs_props2["eta_y"])
-    bj3 = stp.bj_struktur_p119(K, l2, 3, 0, cs_props2["eta_y"])
-    bj3s = stp.bj_struktur_p119(K, l2, 3, 1, cs_props2["eta_y"])
-    bj4 = stp.bj_struktur_p119(K, l2, 4, 0, cs_props2["eta_y"])
-    bj4s = stp.bj_struktur_p119(K, l2, 4, 1, cs_props2["eta_y"])
 
-    bj = stp.bj_opt2_p119_forloop(K, l2, cs_props2["eta_y"])
+    bj2 = stp.bj_p119(K, l2, 2, 0, cs_props2["eta_y"])
+    bj2s = stp.bj_p119(K, l2, 2, 1, cs_props2["eta_y"])
+    bj3 = stp.bj_p119(K, l2, 3, 0, cs_props2["eta_y"])
+    bj3s = stp.bj_p119(K, l2, 3, 1, cs_props2["eta_y"])
+    bj4 = stp.bj_p119(K, l2, 4, 0, cs_props2["eta_y"])
+    bj4s = stp.bj_p119(K, l2, 4, 1, cs_props2["eta_y"])
+
+    bj = stp.bj(x=l2, **s2)
     bj_sol = np.array([[3.375, 2.905, 1.991], [1.969, 2.531, 2.344]])
 
     np.testing.assert_allclose(bj[0, 0, 2:5], np.array([bj2, bj3, bj4]))
@@ -170,6 +171,7 @@ def test_ex02():
 
     np.testing.assert_allclose(signif(Z_x[-1], 5), signif(Zd, 5))
     np.testing.assert_allclose(signif(Z_x[0], 5), signif(Za, 5))
+
 
 if __name__ == "__main__":
     test_ex02()

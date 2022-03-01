@@ -112,7 +112,6 @@ EX04 H-Querschnitt
     ysi_v = stp.AH_y.dot(b_v) # von OK
     zsi_v = stp.AH_z.dot(h_v) # von Links
 
-
     cs_props = stp.cs(b=b_v, h=h_v, y_si=ysi_v, z_si=zsi_v)
 
     print(cs_props)

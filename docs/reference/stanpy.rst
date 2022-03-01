@@ -1,9 +1,2 @@
-stanpy
-======
-
-.. testsetup::
-
-    import stanpy as stp
-
-.. automodule:: stanpy
-    :members:
+.. automodule:: asyncio
+    :members: run, gather, AbstractEventLoop
