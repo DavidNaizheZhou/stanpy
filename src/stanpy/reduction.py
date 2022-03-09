@@ -114,6 +114,16 @@ def get_bc_interfaces(*slabs):
     return bc[1:-1:2]
 
 
+def solve_system2(*s, x: np.ndarray = np.array([])):
+
+    fill_bc_dictionary_slab(*s)
+    bc_interface = get_bc_interfaces(*s)
+
+    print(bc_interface)
+
+    return 0, 0
+
+
 def solve_system(*slabs, x: np.ndarray = np.array([])):
 
     fill_bc_dictionary_slab(*slabs)
@@ -201,7 +211,10 @@ if __name__ == "__main__":
 
     dx = 1e-10
     x = np.sort(np.append(np.linspace(0, 12, 1000), [0 + dx, l, l - dx]))
-    x, Zx = stp.solve_system(*s, x=x)
+    # x, Zx = stp.solve_system(*s, x=x)
+    x, Zx = stp.solve_system2(*s, x=x)
+
+    quit()
 
     print(Zx[0])
     print(Zx[x == l])

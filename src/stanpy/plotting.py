@@ -384,7 +384,7 @@ def plot_load(ax, *args, **kwargs):
     dy_N = kwargs.pop("dy_N", 0)
     P_scale = kwargs.pop("P_scale", 1)
     N_scale = kwargs.pop("N_scale", 1)
-    q_scale = kwargs.pop("q_scale", 1)
+    q_scale = kwargs.pop("q_scale", 0.5)
     q_linspace = kwargs.pop("q_linspace", 10)
 
     offset0_positiv = offset_positiv = copy.copy(kwargs.pop("offset", 0.1))
