@@ -6,6 +6,7 @@ API Reference
     :maxdepth: 2
     :caption: PACKAGE
 
-    plotting
+    input
     transfer_relation
-    reduction_method
+    reduction_method 
+    plotting

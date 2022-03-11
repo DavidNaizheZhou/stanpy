@@ -336,23 +336,23 @@ def calc_load_integral_R(
         * *q* (``float``) , defaults to 0 --
           load distribution see :eq:`q_j_hat`, multiple inputs possible
         * *w_0* (``float``) , defaults to 0 --
-          initial deformation see :eq:`w_V`, :eq:`q_j_hat`, multiple inputs possible
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
         * *psi_0* (``float``) , defaults to 0 --
-          initial deformation see :eq:`w_V`, :eq:`q_j_hat`, multiple inputs possible
-        * *m_0* (``float``) , defaults to 0 --
-          load distribution see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-        * *kappa_0* (``float``) , defaults to 0 --
-          load distribution see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
+        * *m_0* (``sympy.polynomial``) , defaults to 0 --
+          active moment dist :math:`m`
+        * *kappa_0* (``sympy.polynomial``) , defaults to 0 --
+          active curvature polynomial :math:`\kappa^e`, multiple inputs possible
         * *q_d* (``tuple``) , defaults to (0,0) --
-          load distribution delta see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`q_\Delta` load distribution (magnitude, position0, position1), multiple inputs possible
         * *P* (``tuple``) , defaults to (0,0) --
-          point load see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`P` pointload (magnitude, position), multiple inputs possible
         * *M_e* (``tuple``) , defaults to (0,0) --
-          Moment see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`M^e` active Moment (magnitude, position), multiple inputs possible
         * *phi_e* (``tuple``) , defaults to (0,0) --
-          phi see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`\\varphi^e` active angle of rotation (magnitude, position), multiple inputs possible
         * *W_e* (``tuple``) , defaults to (0,0) --
-          W see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`W^e` active displacement (magnitude, position), multiple inputs possible
     """
 
     gamma, K = gamma_K_function(**s)
@@ -376,23 +376,7 @@ def calc_load_integral_R(
     load_j_arrays = calc_loadj_arrays(q_j, wv_j, **s)
 
     # x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
-    (
-        load_integrals_Q,
-        aj,
-        bj,
-        x_loads,
-        x_P,
-        P_array,
-        x_Me,
-        Me_array,
-        x_qd1,
-        x_qd2,
-        qd_array,
-        x_phie,
-        phie_array,
-        x_We,
-        We_array,
-    ) = calc_load_integral_Q(x, return_all=True, **s)
+    load_integrals_Q, aj, bj, x_loads, loads_dict = calc_load_integral_Q(x, return_all=True, **s)
 
     mask = _load_bj_x_mask(x_loads, x)
     d_R = np.zeros((x.size, 5))
@@ -403,11 +387,17 @@ def calc_load_integral_R(
     load_integrals_R = load_integrals_Q + d_R
 
     load_integrals_R[:, 3] = -np.sum(aj[mask, 1 : 1 + q_j.size] * q_j, axis=1)
+
+    P_array = loads_dict["P"][0]
+    x_P = loads_dict["P"][1]
     if x_P.shape[0] > 0:
         for i in range(P_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_P[:, i])
             load_integrals_R[:, 3] += -aj[mask, 0] * P_array[i, 0]
 
+    qd_array = loads_dict["q_d"][0]
+    x_qd1 = loads_dict["q_d"][1]
+    x_qd2 = loads_dict["q_d"][2]
     if qd_array.shape[0] > 0:
         for i in range(qd_array.shape[0]):
             mask1 = _load_bj_x_mask(x_loads, x_qd1[:, i])
@@ -431,6 +421,28 @@ def calc_load_integral_R_poly(
     wv_j: object = None,
     **s,
 ):
+    """_summary_
+
+    :param x: _description_, defaults to np.array([])
+    :type x: np.ndarray, optional
+    :param eta: _description_, defaults to np.array([])
+    :type eta: np.ndarray, optional
+    :param gamma: _description_, defaults to np.array([])
+    :type gamma: np.ndarray, optional
+    :param load_j_arrays: _description_, defaults to None
+    :type load_j_arrays: _type_, optional
+    :param return_aj: _description_, defaults to False
+    :type return_aj: bool, optional
+    :param return_bj: _description_, defaults to False
+    :type return_bj: bool, optional
+    :param return_all: _description_, defaults to False
+    :type return_all: bool, optional
+    :param wv_j: _description_, defaults to None
+    :type wv_j: object, optional
+    :return: _description_
+    :rtype: _type_
+    """
+
     l = s.get("l")
     q = s.get("q", 0)
     N = -s.get("N", 0)
@@ -574,71 +586,7 @@ def _load_bj_x_mask(x, y):
     return result
 
 
-def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
-    """calculates the load integrals in shear-force-representation from :cite:t:`1993:rubin`
-
-    :param x: positions where to calculate the load integrals - when empty then x is set to length l, defaults to np.array([])
-    :type x: np.ndarray, optional
-    :param return_all: return aj, bj, masks for faster computation, defaults to False
-    :type return_all: bool, optional
-    :return: load integrals
-    :rtype: `np.ndarray <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`__
-
-    :param \**s:
-        see below
-
-    :Keyword Arguments:
-        * *EI* or *E* and *I* (``float``) --
-          Bending stiffness
-        * *GA* or *G* and *A* (``float``), defaults to np.inf  --
-          Shear stiffness
-        * *N* (``float``) , defaults to 0 --
-          normal Force (compression - negative)
-        * *q* (``float``) , defaults to 0 --
-          load distribution see :eq:`q_j_hat`, multiple inputs possible
-        * *w_0* (``float``) , defaults to 0 --
-          initial deformation see :eq:`w_V`, :eq:`q_j_hat`, multiple inputs possible
-        * *psi_0* (``float``) , defaults to 0 --
-          initial deformation see :eq:`w_V`, :eq:`q_j_hat`, multiple inputs possible
-        * *m_0* (``float``) , defaults to 0 --
-          load distribution see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-        * *kappa_0* (``float``) , defaults to 0 --
-          load distribution see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-        * *q_d* (``tuple``) , defaults to (0,0) --
-          load distribution delta see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-        * *P* (``tuple``) , defaults to (0,0) --
-          point load see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-        * *M_e* (``tuple``) , defaults to (0,0) --
-          Moment see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-        * *phi_e* (``tuple``) , defaults to (0,0) --
-          phi see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-        * *W_e* (``tuple``) , defaults to (0,0) --
-          W see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-    """
-
-    gamma, K = gamma_K_function(**s)
-    l = s.get("l")
-    q = s.get("q", 0)
-    N = -s.get("N", 0)
-
-    if isinstance(x, (int, float, list)):
-        x = np.array([x]).flatten()
-    if x.size == 0:
-        x = np.array([l])
-
-    EI, GA = load_material_parameters(**s)
-
-    wv = convert_psi0_w0_to_wv(**s)
-    wv_j = convert_poly_wv(wv)
-
-    q_j = convert_poly(q)
-    load_j_arrays = calc_loadj_arrays(q_j, wv_j, **s)
-
-    q_hat_j = load_j_arrays["q_hat_j"]
-    m_j = load_j_arrays["m_j"]
-    kappa_j = load_j_arrays["kappa_j"]
-    max_bj_index = np.max([m_j.size + 3, q_hat_j.size + 4, kappa_j.size + 2]) - 1
-
+def _load_x_loads_position(x, **s):
     x_loads = np.copy(x)
 
     P_array = extract_P_from_beam(**s)
@@ -683,6 +631,83 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
     x_loads[x_loads < 0] = -1
     x_loads = np.unique(x_loads)
 
+    return x_loads, {
+        "P": [P_array, x_P],
+        "M_e": [Me_array, x_Me],
+        "phi_e": [phie_array, x_phie],
+        "W_e": [We_array, x_We],
+        "q_d": [qd_array, x_qd1, x_qd2],
+    }
+
+
+def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
+    """calculates the load integrals in shear-force-representation from :cite:t:`1993:rubin`
+
+    :param x: positions where to calculate the load integrals - when empty then x is set to length l, defaults to np.array([])
+    :type x: np.ndarray, optional
+    :param return_all: return aj, bj, masks for faster computation, defaults to False
+    :type return_all: bool, optional
+    :return: load integrals
+    :rtype: `np.ndarray <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`__
+
+    :param \**s:
+        see below
+
+    :Keyword Arguments:
+        * *EI* or *E* and *I* (``float``) --
+          Bending stiffness
+        * *GA* or *G* and *A* (``float``), defaults to np.inf  --
+          Shear stiffness
+        * *N* (``float``) , defaults to 0 --
+          normal Force (compression - negative)
+        * *q* (``float``) , defaults to 0 --
+          load distribution see :eq:`q_j_hat`, multiple inputs possible
+        * *w_0* (``float``) , defaults to 0 --
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
+        * *psi_0* (``float``) , defaults to 0 --
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
+        * *m_0* (``sympy.polynomial``) , defaults to 0 --
+          active moment dist :math:`m`
+        * *kappa_0* (``sympy.polynomial``) , defaults to 0 --
+          active curvature polynomial :math:`\kappa^e`, multiple inputs possible
+        * *q_d* (``tuple``) , defaults to (0,0) --
+          :math:`q_\Delta` load distribution (magnitude, position0, position1), multiple inputs possible
+        * *P* (``tuple``) , defaults to (0,0) --
+          :math:`P` pointload (magnitude, position), multiple inputs possible
+        * *M_e* (``tuple``) , defaults to (0,0) --
+          :math:`M^e` active Moment (magnitude, position), multiple inputs possible
+        * *phi_e* (``tuple``) , defaults to (0,0) --
+          :math:`\\varphi^e` active angle of rotation (magnitude, position), multiple inputs possible
+        * *W_e* (``tuple``) , defaults to (0,0) --
+          :math:`W^e` active displacement (magnitude, position), multiple inputs possible
+    """
+
+    gamma, K = gamma_K_function(**s)
+    l = s.get("l")
+    q = s.get("q", 0)
+    N = -s.get("N", 0)
+
+    if isinstance(x, (int, float, list)):
+        x = np.array([x]).flatten()
+    if x.size == 0:
+        x = np.array([l])
+
+    EI, GA = load_material_parameters(**s)
+
+    wv = convert_psi0_w0_to_wv(**s)
+    wv_j = convert_poly_wv(wv)
+
+    q_j = convert_poly(q)
+    load_j_arrays = calc_loadj_arrays(q_j, wv_j, **s)
+
+    # todo rewrite with numpy poly1d
+    q_hat_j = load_j_arrays["q_hat_j"]
+    m_j = load_j_arrays["m_j"]
+    kappa_j = load_j_arrays["kappa_j"]
+    max_bj_index = np.max([m_j.size + 3, q_hat_j.size + 4, kappa_j.size + 2]) - 1
+
+    x_loads, loads_dict = _load_x_loads_position(x, **s)
+
     aj, bj = bj_opt2_p89(x=x_loads, n=max_bj_index, return_aj=True, **s)
 
     q_hat_vec = np.zeros((x.size, 5))
@@ -719,6 +744,9 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
         kappe_0_vec[:, 3] = -gamma * N * np.sum(bj[mask, 1 : 1 + kappa_j.size] * kappa_j, axis=1)
         kappe_0_vec[:, 4] = 0.0
 
+    qd_array = loads_dict["q_d"][0]
+    x_qd1 = loads_dict["q_d"][1]
+    x_qd2 = loads_dict["q_d"][2]
     if qd_array.shape[0] > 0:
         for i in range(qd_array.shape[0]):
             mask1 = _load_bj_x_mask(x_loads, x_qd1[:, i])
@@ -731,6 +759,8 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
             q_delta_vec[:, 3] = -gamma * (bj[mask1, 1] - bj[mask2, 1]) * qd_array[i, 0]
             q_delta_vec[:, 4] = 0.0
 
+    P_array = loads_dict["P"][0]
+    x_P = loads_dict["P"][1]
     if P_array.shape[0] > 0:
         for i in range(P_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_P[:, i])
@@ -740,6 +770,8 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
             P_vec[:, 3] += -gamma * bj[mask, 0] * P_array[i, 0]
             P_vec[:, 4] += 0.0
 
+    Me_array = loads_dict["M_e"][0]
+    x_Me = loads_dict["M_e"][1]
     if Me_array.shape[0] > 0:
         for i in range(Me_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_Me[:, i])
@@ -749,6 +781,8 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
             M_e_vec[:, 3] += K * bj[mask, 1] * Me_array[i, 0]
             M_e_vec[:, 4] += 0.0
 
+    phie_array = loads_dict["phi_e"][0]
+    x_phie = loads_dict["phi_e"][1]
     if phie_array.shape[0] > 0:
         for i in range(phie_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_phie[:, i])
@@ -758,6 +792,8 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
             phi_e_vec[:, 3] += -gamma * N * bj[mask, 1] * phie_array[i, 0]
             phi_e_vec[:, 4] += 0.0
 
+    We_array = loads_dict["W_e"][0]
+    x_We = loads_dict["W_e"][1]
     if We_array.shape[0] > 0:
         for i in range(We_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_We[:, i])
@@ -771,23 +807,7 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
     load_integrals_Q[:, -1] = 1.0
 
     if return_all:
-        return (
-            load_integrals_Q,
-            aj,
-            bj,
-            x_loads,
-            x_P,
-            P_array,
-            x_Me,
-            Me_array,
-            x_qd1,
-            x_qd2,
-            qd_array,
-            x_phie,
-            phie_array,
-            x_We,
-            We_array,
-        )
+        return load_integrals_Q, aj, bj, x_loads, loads_dict
     else:
         return load_integrals_Q
 
@@ -801,164 +821,6 @@ def load_integral(**s):
         load_integral = stp.calc_load_integral_R_poly(**s)
 
     return load_integral
-
-
-def calc_load_integral_Q_old(
-    x: np.ndarray = np.array([]),
-    return_bj: bool = False,
-    return_aj: bool = False,
-    return_all: bool = False,
-    wv_j=None,
-    load_j_arrays=None,
-    side="+",
-    **s,
-):
-    gamma, K = gamma_K_function(**s)
-    l = s.get("l")
-    q = s.get("q", 0)
-    N = -s.get("N", 0)
-    if x.size == 0:
-        x = np.array([l])
-
-    EI, GA = load_material_parameters(**s)
-
-    q_delta = s.get("q_delta", (0, 0, 0))
-    P = s.get("P", 0)
-
-    M_e = s.get("M_e", (0, 0))
-    phi_e = s.get("phi_e", (0, 0))
-    W_e = s.get("W_e", (0, 0))
-
-    if wv_j == None:
-        wv = convert_psi0_w0_to_wv(**s)
-        wv_j = convert_poly_wv(wv)
-
-    if load_j_arrays == None:
-        q_j = convert_poly(q)
-        load_j_arrays = calc_loadj_arrays(q_j, wv_j, **s)
-
-    q_hat_j = load_j_arrays["q_hat_j"]
-    m_j = load_j_arrays["m_j"]
-    kappa_j = load_j_arrays["kappa_j"]
-
-    max_bj_index = np.max([m_j.size + 3, q_hat_j.size + 4, kappa_j.size + 2]) - 1
-    x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
-
-    # aj, bj = bj_opt2_p89(x_for_bj, max_bj_index, return_aj=True, side=side, **s)
-    aj, bj = bj_opt2_p89(x, max_bj_index, return_aj=True, side=side, **s)
-
-    # aj, bj for Forces P
-    P_array = extract_P_from_beam(**s)
-
-    q_hat_vec = np.zeros((x.size, 5))
-    m_0_vec = np.zeros((x.size, 5))
-    kappe_0_vec = np.zeros((x.size, 5))
-    q_delta_vec = np.zeros((x.size, 5))
-    P_vec = np.zeros((x.size, 5))
-    M_e_vec = np.zeros((x.size, 5))
-    phi_e_vec = np.zeros((x.size, 5))
-    W_e_vec = np.zeros((x.size, 5))
-
-    if "q" in s.keys() or "w_0" in s.keys():
-        q_hat_vec[:, 0] = gamma * np.sum(
-            (bj[: x.size, 4 : 4 + q_hat_j.size] / EI - bj[: x.size, 2 : 2 + q_hat_j.size] / GA) * q_hat_j,
-            axis=1,
-        )
-        q_hat_vec[:, 1] = gamma / EI * np.sum(bj[: x.size, 3 : 3 + q_hat_j.size] * q_hat_j, axis=1)
-        q_hat_vec[:, 2] = -gamma * np.sum(bj[: x.size, 2 : 2 + q_hat_j.size] * q_hat_j, axis=1)
-        q_hat_vec[:, 3] = -gamma * np.sum(bj[: x.size, 1 : 1 + q_hat_j.size] * q_hat_j, axis=1)
-        q_hat_vec[:, 4] = 0.0
-
-    if "m_0" in s.keys():
-        m_0_vec[:, 0] = -gamma / EI * np.sum((bj[: x.size, 3 : 3 + m_j.size]) * m_j, axis=1)
-        m_0_vec[:, 1] = -1 / EI * np.sum(bj[: x.size, 2 : 2 + m_j.size] * m_j, axis=1)
-        m_0_vec[:, 2] = +np.sum(bj[: x.size, 1 : 1 + m_j.size] * m_j, axis=1)
-        m_0_vec[:, 3] = +K * np.sum(bj[: x.size, 2 : 2 + m_j.size] * m_j, axis=1)
-        m_0_vec[:, 4] = 0.0
-
-    if "kappe_0" in s.keys():
-        kappe_0_vec[:, 0] = -gamma * np.sum(bj[: x.size, 2 : 2 + kappa_j.size] * kappa_j, axis=1)
-        kappe_0_vec[:, 1] = -gamma * np.sum(bj[: x.size, 1 : 1 + kappa_j.size] * kappa_j, axis=1)
-        kappe_0_vec[:, 2] = -gamma * N * np.sum(bj[: x.size, 2 : 2 + kappa_j.size] * kappa_j, axis=1)
-        kappe_0_vec[:, 3] = -gamma * N * np.sum(bj[: x.size, 1 : 1 + kappa_j.size] * kappa_j, axis=1)
-        kappe_0_vec[:, 4] = 0.0
-
-    if "q_delta" in index_dict.keys():
-        index_b_s = index_dict["q_delta"][0] + x.size
-        index_b_ss = index_dict["q_delta"][1] + x.size
-
-        q_delta_vec[:, 0] = (
-            gamma
-            * (
-                (bj[index_b_s :: x_j.size, 4] - bj[index_b_ss :: x_j.size, 4]) / EI
-                - (bj[index_b_s :: x_j.size, 2] - bj[index_b_ss :: x_j.size, 2]) / GA
-            )
-            * q_delta[0]
-        )
-        q_delta_vec[:, 1] = +gamma * (bj[index_b_s :: x_j.size, 3] - bj[index_b_ss :: x_j.size, 3]) / EI * q_delta[0]
-        q_delta_vec[:, 2] = -gamma * (bj[index_b_s :: x_j.size, 2] - bj[index_b_ss :: x_j.size, 2]) * q_delta[0]
-        q_delta_vec[:, 3] = -gamma * (bj[index_b_s :: x_j.size, 1] - bj[index_b_ss :: x_j.size, 1]) * q_delta[0]
-        q_delta_vec[:, 4] = 0.0
-
-    if "P" in index_dict.keys():
-        for i in range(P_array.shape[0]):
-            x_P = x - P_array[i, 1]
-            x_P[x_P <= 0] = 0
-            aj_P, bj_P = bj_opt2_p89(x_P, max_bj_index, return_aj=True, side=side, **s)
-
-            P_vec[:, 0] += gamma * (bj_P[i, 3] / EI - bj_P[i, 1] / GA) * P_array[i, 0]
-            P_vec[:, 1] += +gamma * bj_P[i, 2] / EI * P_array[i, 0]
-            P_vec[:, 2] += -gamma * bj_P[i, 1] * P_array[i, 0]
-            P_vec[:, 3] += -gamma * bj_P[i, 0] * P_array[i, 0]
-            P_vec[:, 4] += 0.0
-    if "M_e" in index_dict.keys():
-
-        index_b_s = index_dict["M_e"][0]
-        M_e_vec[:] = np.array(
-            [
-                -gamma * (bj[index_b_s, 2] / EI) * M_e[0],
-                -bj[index_b_s, 1] / EI * M_e[0],
-                +bj[index_b_s, 0] * M_e[0],
-                +K * bj[index_b_s, 1] * M_e[0],
-                0.0,
-            ]
-        )
-    if "phi_e" in index_dict.keys():
-        index_b_s = index_dict["phi_e"][0]
-        phi_e_vec[:] = np.array(
-            [
-                -gamma * bj[index_b_s, 2] * phi_e[0],
-                -bj[index_b_s, 0] * phi_e[0],
-                -gamma * N * bj[index_b_s, 1] * phi_e[0],
-                -gamma * N * bj[index_b_s, 0] * phi_e[0],
-                0.0,
-            ]
-        )
-    if "W_e" in index_dict.keys():
-        index_b_s = index_dict["W_e"][0]
-        W_e_vec[:] = np.array(
-            [
-                +bj[index_b_s, 0] * W_e[0],
-                +K / gamma * bj[index_b_s, 1] * W_e[0],
-                +N * bj[index_b_s, 0] * W_e[0],
-                +N * K * bj[index_b_s, 1] * W_e[0],
-                0.0,
-            ]
-        )
-
-    load_integrals_Q = q_hat_vec + P_vec + q_delta_vec
-    load_integrals_Q[:, -1] = 1.0
-
-    if return_all:
-        return aj, bj, aj_P, bj_p, load_integrals_Q
-    elif return_bj and return_aj:
-        return aj, bj, load_integrals_Q
-    elif return_bj:
-        return bj, load_integrals_Q
-    elif return_aj:
-        return aj, load_integrals_Q
-    else:
-        return load_integrals_Q
 
 
 def tr_Q(x: np.ndarray = np.array([]), **s):
@@ -982,23 +844,23 @@ def tr_Q(x: np.ndarray = np.array([]), **s):
         * *q* (``float``) , defaults to 0 --
           load distribution see :eq:`q_j_hat`, multiple inputs possible
         * *w_0* (``float``) , defaults to 0 --
-          initial deformation see :eq:`w_V`, :eq:`q_j_hat`, multiple inputs possible
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
         * *psi_0* (``float``) , defaults to 0 --
-          initial deformation see :eq:`w_V`, :eq:`q_j_hat`, multiple inputs possible
-        * *m_0* (``float``) , defaults to 0 --
-          load distribution see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-        * *kappa_0* (``float``) , defaults to 0 --
-          load distribution see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
+        * *m_0* (``sympy.polynomial``) , defaults to 0 --
+          active moment dist :math:`m`
+        * *kappa_0* (``sympy.polynomial``) , defaults to 0 --
+          active curvature polynomial :math:`\kappa^e`, multiple inputs possible
         * *q_d* (``tuple``) , defaults to (0,0) --
-          load distribution delta see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`q_\Delta` load distribution (magnitude, position0, position1), multiple inputs possible
         * *P* (``tuple``) , defaults to (0,0) --
-          point load see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`P` pointload (magnitude, position), multiple inputs possible
         * *M_e* (``tuple``) , defaults to (0,0) --
-          Moment see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`M^e` active Moment (magnitude, position), multiple inputs possible
         * *phi_e* (``tuple``) , defaults to (0,0) --
-          phi see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`\\varphi^e` active angle of rotation (magnitude, position), multiple inputs possible
         * *W_e* (``tuple``) , defaults to (0,0) --
-          W see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`W^e` active displacement (magnitude, position), multiple inputs possible
     """
 
     l = s.get("l")
@@ -1011,23 +873,7 @@ def tr_Q(x: np.ndarray = np.array([]), **s):
     gamma, K = gamma_K_function(**s)
     EI, GA = load_material_parameters(**s)
 
-    (
-        load_integrals_Q,
-        aj,
-        bj,
-        x_loads,
-        x_P,
-        P_array,
-        x_Me,
-        Me_array,
-        x_qd1,
-        x_qd2,
-        qd_array,
-        x_phie,
-        phie_array,
-        x_We,
-        We_array,
-    ) = calc_load_integral_Q(x, return_all=True, **s)
+    load_integrals_Q, aj, bj, x_loads, load_dict = calc_load_integral_Q(x, return_all=True, **s)
 
     tr = np.zeros((x.size, 5, 5))
     tr[:, :, :] = np.eye(5, 5)
@@ -1156,7 +1002,7 @@ def tr(
     *args,
     x: np.ndarray = np.array([]),
 ):
-    """_summary_
+    """calculates the transferralation for one or more input dictionarys
 
     :param x: _description_, defaults to np.array([])
     :type x: np.ndarray, optional
@@ -1167,8 +1013,8 @@ def tr(
     if isinstance(args, dict):
         args = [args]
 
-    if isinstance(x, (int, float)):
-        x = np.array([x])
+    if isinstance(x, (int, float, list)):
+        x = np.array([x]).flatten()
 
     if x.size == 0:
         x = stp.calc_x_system(*args)
@@ -1257,23 +1103,23 @@ def tr_R(x: np.ndarray = np.array([]), **s):
         * *q* (``float``) , defaults to 0 --
           load distribution see :eq:`q_j_hat`, multiple inputs possible
         * *w_0* (``float``) , defaults to 0 --
-          initial deformation see :eq:`w_V`, :eq:`q_j_hat`, multiple inputs possible
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
         * *psi_0* (``float``) , defaults to 0 --
-          initial deformation see :eq:`w_V`, :eq:`q_j_hat`, multiple inputs possible
-        * *m_0* (``float``) , defaults to 0 --
-          load distribution see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
-        * *kappa_0* (``float``) , defaults to 0 --
-          load distribution see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
+        * *m_0* (``sympy.polynomial``) , defaults to 0 --
+          active moment dist :math:`m`
+        * *kappa_0* (``sympy.polynomial``) , defaults to 0 --
+          active curvature polynomial :math:`\kappa^e`, multiple inputs possible
         * *q_d* (``tuple``) , defaults to (0,0) --
-          load distribution delta see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`q_\Delta` load distribution (magnitude, position0, position1), multiple inputs possible
         * *P* (``tuple``) , defaults to (0,0) --
-          point load see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`P` pointload (magnitude, position), multiple inputs possible
         * *M_e* (``tuple``) , defaults to (0,0) --
-          Moment see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`M^e` active Moment (magnitude, position), multiple inputs possible
         * *phi_e* (``tuple``) , defaults to (0,0) --
-          phi see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`\\varphi^e` active angle of rotation (magnitude, position), multiple inputs possible
         * *W_e* (``tuple``) , defaults to (0,0) --
-          W see :eq:`load_Q_constant_wQ`, :eq:`load_Q_constant_phiQ`, :eq:`load_Q_constant_MQ`, :eq:`load_Q_constant_QQ`, multiple inputs possible
+          :math:`W^e` active displacement (magnitude, position), multiple inputs possible
     """
 
     if isinstance(x, (int, float, list)):
@@ -1318,6 +1164,17 @@ def tr_R_poly(
     gamma: np.ndarray = np.array([]),
     **s,
 ):
+    """_summary_
+
+    :param x: _description_, defaults to np.array([])
+    :type x: np.ndarray, optional
+    :param eta: _description_, defaults to np.array([])
+    :type eta: np.ndarray, optional
+    :param gamma: _description_, defaults to np.array([])
+    :type gamma: np.ndarray, optional
+    :return: _description_
+    :rtype: _type_
+    """
 
     l = s.get("l")
     N = -s.get("N", 0)
@@ -1405,7 +1262,6 @@ def aii_0(prev_bc, wji=0, **s):
 
         gamma, K = stp.gamma_K_function(**s)
         b = stp.bj(**s).flatten()
-        print(b)
         EI, GA = stp.load_material_parameters(**s)
         b[3] = b[3] - EI / GA * b[1]
         li = stp.load_integral(**s).flatten()
@@ -1527,6 +1383,31 @@ def calc_load_integral_Q_poly(
     load_j_arrays=None,
     **s,
 ):
+    """_summary_
+
+    :param x: _description_, defaults to np.array([])
+    :type x: np.ndarray, optional
+    :param bj: _description_, defaults to np.array([])
+    :type bj: _type_, optional
+    :param aj: _description_, defaults to np.array([])
+    :type aj: _type_, optional
+    :param eta: _description_, defaults to np.array([])
+    :type eta: _type_, optional
+    :param gamma: _description_, defaults to np.array([])
+    :type gamma: _type_, optional
+    :param return_bj: _description_, defaults to False
+    :type return_bj: bool, optional
+    :param return_aj: _description_, defaults to False
+    :type return_aj: bool, optional
+    :param return_all: _description_, defaults to False
+    :type return_all: bool, optional
+    :param wv_j: _description_, defaults to None
+    :type wv_j: _type_, optional
+    :param load_j_arrays: _description_, defaults to None
+    :type load_j_arrays: _type_, optional
+    :return: _description_
+    :rtype: _type_
+    """
 
     l = s.get("l")
     q = s.get("q", 0)
@@ -1569,17 +1450,7 @@ def calc_load_integral_Q_poly(
 
     max_bj_index = np.max([m_j.size + 3, q_hat_j.size + 4, kappa_j.size + 2]) - 1
 
-    x_loads = np.copy(x)
-    P_array = extract_P_from_beam(**s)
-    x_P = np.array([])
-    if P_array.shape[0] > 0:
-        x_P = x[:, None] - P_array[:, 1]  # every col is one P
-        x_P[x_P < 0] = -1
-        x_loads = np.append(x_loads, x_P.flatten())
-    x_loads[x_loads < 0] = -1
-    x_loads = np.unique(x_loads)
-
-    x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
+    x_loads, loads_dict = _load_x_loads_position(x, **s)
 
     aj, bj = bj_opt2_p119_forloop(K, x_loads, eta, max_bj_index + 1, return_aj=True, **s)
 
@@ -1612,58 +1483,65 @@ def calc_load_integral_Q_poly(
         kappe_0_vec[:, 1] = -kappa_j * np.sum(bj[mask, 1, 2 : 2 + gamma.size] * gamma, axis=1)
         kappe_0_vec[:, 2:5] = 0.0
 
-    if "q_delta" in index_dict.keys():
-        # todo rewrite with mask
-        index_b_s = index_dict["q_delta"][0] + x.size
-        index_b_ss = index_dict["q_delta"][1] + x.size
-        EI_star = EI_poly(l - x_for_bj[index_b_s])
-        EI_2star = EI_poly(l - x_for_bj[index_b_ss])
+    qd_array = loads_dict["q_d"][0]
+    x_qd1 = loads_dict["q_d"][1]
+    x_qd2 = loads_dict["q_d"][2]
 
-        q_delta_vec[:, 0] = (
-            bj[index_b_s :: x_j.size, 0, 4] / EI_star - bj[index_b_ss :: x_j.size, 0, 4] / EI_2star
-        ) * q_delta[0]
-        q_delta_vec[:, 1] = (
-            bj[index_b_s :: x_j.size, 1, 4] / EI_star - bj[index_b_ss :: x_j.size, 1, 4] / EI_2star
-        ) * q_delta[0]
-        q_delta_vec[:, 2] = (aj[index_b_s :: x_j.size, 2] - aj[index_b_ss, 2]) * q_delta[0]
-        q_delta_vec[:, 3] = (aj[index_b_s :: x_j.size, 1] - aj[index_b_ss, 1]) * q_delta[0]
-        q_delta_vec[:, 4] = 0.0
+    x_qd2[x_qd2 < 0] = 0
+    if qd_array.shape[0] > 0:
+        for i in range(qd_array.shape[0]):
+            mask1 = _load_bj_x_mask(x_loads, x_qd1[:, i])
+            mask2 = _load_bj_x_mask(x_loads, x_qd2[:, i])
 
+            EI_star = EI_poly(l - x_qd1).flatten()
+            EI_2star = EI_poly(l - x_qd2).flatten()
+
+            q_delta_vec[:, 0] += (bj[mask1, 0, 4] / EI_star - bj[mask2, 0, 4] / EI_2star) * qd_array[i, 0]
+            q_delta_vec[:, 1] += (bj[mask1, 1, 4] / EI_star - bj[mask2, 1, 4] / EI_2star) * qd_array[i, 0]
+            q_delta_vec[:, 2] += -(aj[mask1, 2] - aj[mask2, 2]) * qd_array[i, 0]
+            q_delta_vec[:, 3] += -(aj[mask1, 1] - aj[mask2, 1]) * qd_array[i, 0]
+            q_delta_vec[:, 4] += 0.0
+
+    Me_array = loads_dict["M_e"][0]
+    x_Me = loads_dict["M_e"][1]
+    if Me_array.shape[0] > 0:
+        for i in range(Me_array.shape[0]):
+            mask = _load_bj_x_mask(x_loads, x_Me[:, i])
+            EI_star = EI_poly(l - x_Me).flatten()
+            M_e_vec[:, 0] += -bj[mask, 0, 2] / EI_star * Me_array[i, 0]
+            M_e_vec[:, 1] += -bj[mask, 1, 2] / EI_star * Me_array[i, 0]
+            M_e_vec[:, 2] += aj[mask, 0] * Me_array[i, 0]
+            M_e_vec[:, 3:5] += 0.0
+
+    phie_array = loads_dict["phi_e"][0]
+    x_phie = loads_dict["phi_e"][1]
+    if phie_array.shape[0] > 0:
+        for i in range(phie_array.shape[0]):
+            mask = _load_bj_x_mask(x_loads, x_phie[:, i])
+            phi_e_vec[:, 0] += -bj[index_b_s :: x_j.size, 0, 1] * phie_array[i, 0]
+            phi_e_vec[:, 1] += -bj[index_b_s :: x_j.size, 1, 1] * phie_array[i, 0]
+            phi_e_vec[:, 2:5] += 0.0
+
+    We_array = loads_dict["W_e"][0]
+    x_We = loads_dict["W_e"][1]
+    if We_array.shape[0] > 0:
+        for i in range(We_array.shape[0]):
+            mask = _load_bj_x_mask(x_loads, x_We[:, i])
+            W_e_vec[:, 0] += -bj[mask, 0, 0] * We_array[i, 0]
+            W_e_vec[:, 1] += -bj[mask, 1, 0] * We_array[i, 0]
+            W_e_vec[:, 2:5] += 0.0
+
+    P_array = loads_dict["P"][0]
+    x_P = loads_dict["P"][1]
     if P_array.shape[0] > 0:
         for i in range(P_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_P[:, i])
-            # index_b_s = index_dict["P"][0] + x.size
-            # EI_star = EI_poly(l - x_j[index_dict["P"][0]])
             EI_star = EI_poly(x)
             P_vec[:, 0] = bj[mask, 0, 3] / EI_star * P[0]
             P_vec[:, 1] = bj[mask, 1, 3] / EI_star * P[0]
             P_vec[:, 2] = -aj[mask, 1] * P[0]
             P_vec[:, 3] = -aj[mask, 0] * P[0]
             P_vec[:, 4] = 0.0
-
-    if "M_e" in index_dict.keys():
-        # todo rewrite with mask
-        index_b_s = index_dict["M_e"][0] + x.size
-        EI_star = EI_poly(l - x_for_bj[index_b_s])
-
-        M_e_vec[:, 0] = -bj[index_b_s :: x_j.size, 0, 2] / EI_star * M_e[0]
-        M_e_vec[:, 1] = -bj[index_b_s :: x_j.size, 1, 2] / EI_star * M_e[0]
-        M_e_vec[:, 2] = aj[index_b_s :: x_j.size, 0] * M_e[0]
-        M_e_vec[:, 3:5] = 0.0
-
-    if "phi_e" in index_dict.keys():
-        # todo rewrite with mask
-        index_b_s = index_dict["phi_e"][0]
-        phi_e_vec[:, 0] = -bj[index_b_s :: x_j.size, 0, 1] * phi_e[0]
-        phi_e_vec[:, 1] = -bj[index_b_s :: x_j.size, 1, 1] * phi_e[0]
-        phi_e_vec[:, 2:5] = 0.0
-
-    if "W_e" in index_dict.keys():
-        # todo rewrite with mask
-        index_b_s = index_dict["W_e"][0]
-        W_e_vec[:, 0] = -bj[index_b_s :: x_j.size, 0, 0] * W_e[0]
-        W_e_vec[:, 1] = -bj[index_b_s :: x_j.size, 1, 0] * W_e[0]
-        W_e_vec[:, 2:5] = 0.0
 
     load_integrals_Q = q_hat_vec + m_0_vec + kappe_0_vec + q_delta_vec + P_vec + M_e_vec + phi_e_vec + W_e_vec
 
@@ -1709,6 +1587,19 @@ def tr_Q_poly(
     rotation_axis="y",
     **s,
 ):
+    """_summary_
+
+    :param x: _description_, defaults to np.array([])
+    :type x: np.ndarray, optional
+    :param eta: _description_, defaults to np.array([])
+    :type eta: np.ndarray, optional
+    :param gamma: _description_, defaults to np.array([])
+    :type gamma: np.ndarray, optional
+    :param rotation_axis: _description_, defaults to "y"
+    :type rotation_axis: str, optional
+    :return: _description_
+    :rtype: _type_
+    """
     l = s.get("l")
 
     x = check_and_convert_input_array(x, **s)
@@ -1716,7 +1607,7 @@ def tr_Q_poly(
     gamma, K = gamma_K_function(**s)
     EI, GA = load_material_parameters(**s)
 
-    if isinstance(EI, sp.polys.polytools.Poly):
+    if isinstance(EI, (sp.polys.polytools.Poly, np.poly1d)):
         EI_poly = EI
         EI0 = EI(0)
     elif isinstance(EI, float) or isinstance(EI, int):

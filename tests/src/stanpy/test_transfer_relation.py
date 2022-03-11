@@ -35,5 +35,41 @@ def test_bj_constant_function():
     pass
 
 
+def test_load_integral_poly_compare_q_with_qd():
+    import sympy as sym
+
+    x = sym.Symbol("x")
+    E = 3 * 10**7  # kN/m2
+    b = 0.2  # m
+    hi = 0.3  # m
+    hk = 0.4  # m
+    l = 3  # m
+    hx = hi + (hk - hi) / l * x
+
+    cs_props = stp.cs(b=b, h=hx)
+    s = {"E": E, "cs": cs_props, "l": l, "q": 10}
+    load_integral_Q_q = stp.calc_load_integral_Q_poly(x=[0, l / 2, l], **s)
+
+    s = {"E": E, "cs": cs_props, "l": l, "q_d": (10, 0, l)}
+    load_integral_Q_qd = stp.calc_load_integral_Q_poly(x=[0, l / 2, l], **s)
+
+    np.testing.assert_allclose(load_integral_Q_q, load_integral_Q_qd)
+    np.set_printoptions(precision=6)
+
+
 if __name__ == "__main__":
-    test_bj_constant_function()
+    import stanpy as stp
+    import sympy as sym
+
+    x = sym.Symbol("x")
+    E = 3 * 10**7  # kN/m2
+    b = 0.2  # m
+    hi = 0.3  # m
+    hk = 0.4  # m
+    l = 3  # m
+    hx = hi + (hk - hi) / l * x
+
+    cs_props = stp.cs(b=b, h=hx)
+    s = {"E": E, "cs": cs_props, "l": l, "q": 10}
+
+    Fik = stp.tr_Q_poly(**s)

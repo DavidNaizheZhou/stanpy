@@ -75,7 +75,6 @@ def test_ex01():
 
 def test_ex02():
 
-    E = 210000000  # kN/m^2
     E = 21e7  # kN/m^2
     l1, l3 = 0.99, 0.99  # m
     l2 = 0.51  # m
@@ -174,4 +173,4 @@ def test_ex02():
 
 
 if __name__ == "__main__":
-    test_ex02()
+    test_ex01()

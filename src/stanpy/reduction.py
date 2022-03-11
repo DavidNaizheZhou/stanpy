@@ -2,6 +2,89 @@ import stanpy as stp
 import numpy as np
 
 
+def P_detach_mat(detach):
+    P = np.zeros((5, 5))
+    if detach == "w":
+        P[0, 0] = 1
+    elif detach == "phi":
+        P[1, 1] = 1
+    elif detach == "M":
+        P[2, 2] = 1
+    elif detach == "V":
+        P[3, 3] = 1
+    return P
+
+
+def P_inject_mat(detach, row):
+    P = np.zeros((5, 5))
+    if detach == "w":
+        P[row, 0] = 1
+    elif detach == "phi":
+        P[row, 1] = 1
+    elif detach == "M":
+        P[row, 2] = 1
+    elif detach == "V":
+        P[row, 3] = 1
+    return P
+
+
+def tr_plus(s, detach="V", inject="V"):
+    Fji_i = stp.tr(s)
+    if inject == "V":
+        A, P_minus, P_plus = A_w(s, detach=detach)
+    elif inject == "phi":
+        A, P_minus, P_plus = A_M(s, detach=detach)
+
+    A_j = P_minus.dot(A) + np.eye(5, 5)
+    Fji_k = Fji_i.dot(A_j) + P_plus
+    return Fji_k, A_j
+
+
+def A_w(s, detach=None):
+    Fji = stp.tr(s)
+    A = np.array(
+        [
+            [-1.0, -Fji[0, 1], -Fji[0, 2], -Fji[0, 3], -Fji[0, 4]],
+            [-1 / Fji[0, 1], -1.0, -Fji[0, 2] / Fji[0, 1], -Fji[0, 3] / Fji[0, 1], -Fji[0, 4] / Fji[0, 1]],
+            [-1 / Fji[0, 2], -Fji[0, 1] / Fji[0, 2], -1.0, -Fji[0, 3] / Fji[0, 2], -Fji[0, 4] / Fji[0, 2]],
+            [-1 / Fji[0, 3], -Fji[0, 1] / Fji[0, 3], -Fji[0, 2] / Fji[0, 3], -1.0, -Fji[0, 4] / Fji[0, 3]],
+            [0, 0, 0, 0, -1.0],
+        ]
+    )
+    if detach == None:
+        return A
+    else:
+        return A, P_detach_mat(detach), P_inject_mat(detach, row=3)
+
+
+def A_M(s, detach):
+    Fji = stp.tr(s)
+    if Fji[2, 1] == 0:
+        A = np.array(
+            [
+                [-1.0, 0, 0, 0, 0],
+                [0, -1.0, 0, 0, 0],
+                [0, -Fji[2, 1] / Fji[2, 2], -1.0, -Fji[2, 3] / Fji[2, 2], -Fji[2, 4] / Fji[2, 2]],
+                [0, -Fji[2, 1] / Fji[2, 3], -Fji[2, 2] / Fji[2, 3], -1.0, -Fji[2, 4] / Fji[2, 3]],
+                [0, 0, 0, 0, -1.0],
+            ]
+        )
+    else:
+        A = np.array(
+            [
+                [-1.0, 0, 0, 0, 0],
+                [0, -1.0, -Fji[2, 2] / Fji[2, 1], -Fji[2, 3] / Fji[2, 1], -Fji[2, 4] / Fji[2, 1]],
+                [0, -Fji[2, 1] / Fji[2, 2], -1.0, -Fji[2, 3] / Fji[2, 2], -Fji[2, 4] / Fji[2, 2]],
+                [0, -Fji[2, 1] / Fji[2, 3], -Fji[2, 2] / Fji[2, 3], -1.0, -Fji[2, 4] / Fji[2, 3]],
+                [0, 0, 0, 0, -1.0],
+            ]
+        )
+    if detach == None:
+        return A
+    else:
+        return A, P_detach_mat(detach), P_inject_mat(detach, row=1)
+
+
 def F_roller_support_reduced(Fxi_minus, bc_i, w_e=0, theta=0):
     """ """
     if bc_i == {"w": 0, "M": 0}:

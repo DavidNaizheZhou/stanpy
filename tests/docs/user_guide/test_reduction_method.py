@@ -129,4 +129,4 @@ def test_ex03():
 
 
 if __name__ == "__main__":
-    test_ex03()
+    test_ex01()

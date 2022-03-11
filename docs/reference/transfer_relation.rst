@@ -87,7 +87,7 @@ for beams with non-constant crossections :cite:p:`1993:rubin`:
     import stanpy as stp
 
     x = sym.Symbol("x")
-    E = 3e7  # kN/m2
+    E = 32000  # kN/m2
     b = 0.2  # m
     ha = hb = 0.3  # m
     hc = 0.4  # m
@@ -98,6 +98,32 @@ for beams with non-constant crossections :cite:p:`1993:rubin`:
     s = {"E": E, "cs": cs_props, "l": l}
     bj = stp.bj(x=[-1,0,2,3,4],**s)
     print(bj)
+
+tr(x)
+-----
+.. automodule:: stanpy
+    :members: tr
+
+.. jupyter-execute::
+
+    import stanpy as stp
+
+    l = 5 #m
+    s = {"EI":32000, "GA":20000, "l":l, "q":2}
+    Fik = stp.tr(s, x=[0,l/2,l])
+    print(Fik)
+
+.. jupyter-execute::
+
+    import stanpy as stp
+
+    l = 5 #m
+    s1 = {"EI":32000, "GA":20000, "l":l, "q":2}
+    s2 = {"EI":32000, "GA":20000, "l":l, "q":2}
+    s = [s1,s2]
+    
+    Fik = stp.tr(*s, x=np.linspace(0, 2*l, 3))
+    print(Fik)
 
 transfer relations constant cross-section
 =========================================
@@ -172,7 +198,7 @@ field matrix Q (shear-force-representation)
 			1& x & -\gamma\dfrac{b_2}{EI}&-\gamma\left(\dfrac{b_3}{EI}-\dfrac{b_1}{G\tilde{A}}\right)&w^Q\\
 			0& 1 & -\dfrac{b_1}{EI}&-\dfrac{b_2}{EI}&\varphi^Q\\
 			0& 0 & b_0& b_1&M^Q\\
-			0& 0 & K b_1& b_0&R^Q\\
+			0& 0 & K b_1& b_0&Q^Q\\
 			0& 0 & 0& 0&1
 	\end{bmatrix}
 
@@ -238,7 +264,165 @@ field matrix R (transverse-force-representation)
 			0& 0 & 0& 0&1
 	\end{bmatrix}
 
+transfer relations non constant cross-section
+=============================================
+load integrals Q (shear-force-representation)
+---------------------------------------------
+.. automodule:: stanpy
+    :members: calc_load_integral_Q_poly
 
+.. jupyter-execute::
+
+    import stanpy as stp
+
+    x = sym.Symbol("x")
+    E = 3*10**7  # kN/m2
+    b = 0.2  # m
+    hi = 0.3  # m
+    hk = 0.4  # m
+    l = 3  # m
+    hx = hi + (hk - hi) / l * x
+
+    cs_props = stp.cs(b=b, h=hx)
+    s = {"E": E, "cs": cs_props, "l": l, "q":10}
+    load_integral_Q = stp.calc_load_integral_Q_poly(x=[0,l/2,l],**s)
+
+    print(load_integral_Q)
+
+.. math::
+    :label: load_Q_non_constant_wQ
+
+    w^Q &= \dfrac{1}{EI_i}\sum_0 b_{j+4}~\overline{q}_j-\dfrac{1}{EI_i}\sum_0 b_{j+3}~m_j-\kappa_i^e\sum_{r=0}^{p_\gamma}b_{r+2}~\gamma_r\\
+    &+\left(\dfrac{b_4^*}{EI^*}-\dfrac{b_4^{**}}{EI^{**}}\right)q_\Delta+\dfrac{b_3^*}{EI^*}P-\dfrac{b_2^*}{EI^*}M^e-b_1^*\phi^e+b_0^*W^e
+
+.. math::
+    :label: load_Q_non_constant_phiQ
+
+    \varphi^Q &= \dfrac{1}{EI_i}\sum_0 b'_{j+4}~\overline{q}_j-\dfrac{1}{EI_i}\sum_0 b'_{j+3}~m_j-\kappa_i^e\sum_{r=0}^{p_\gamma}b'_{r+2}~\gamma_r\\
+    &+\left(\dfrac{b_4^{'*}}{EI^*} -\dfrac{b_4^{'**}}{EI^{**}}\right)q_\Delta+\dfrac{b_3^{'*}}{EI^*}P-\dfrac{b_2^{'*}}{EI^*}M^e-b_1^{'*}\phi^e+b_0^{'*}W^e
+
+.. math::
+    :label: load_Q_non_constant_MQ
+
+    M^Q = -\sum_0 a_{j+2}\overline{q}_j+\sum_0 a_{j+1}m_j-\left(a_2^*-a_2^{**}\right)q_\Delta-a_1^*P+a_0^*M^e-N w^Q
+
+.. math::
+    :label: load_Q_non_constant_QQ
+
+    Q^Q = -\sum_0 a_{j+1}\overline{q}_j-\left(a_1^*-a_1^{**}\right)q_\Delta-a_0^*P-N \varphi^Q
+
+field matrix Q (shear-force-representation)
+-------------------------------------------
+.. automodule:: stanpy
+    :members: tr_Q_poly
+
+.. jupyter-execute::
+
+    import stanpy as stp
+
+    x = sym.Symbol("x")
+    E = 3*10**7  # kN/m2
+    b = 0.2  # m
+    hi = 0.3  # m
+    hk = 0.4  # m
+    l = 3  # m
+    hx = hi + (hk - hi) / l * x
+
+    cs_props = stp.cs(b=b, h=hx)
+    s = {"E": E, "cs": cs_props, "l": l, "q":10}
+
+    Fik = stp.tr_Q_poly(**s)
+    print(Fik)
+
+.. math::
+    :label: field_Q_constant
+
+    F_{ik}^Q = 
+    \begin{bmatrix}
+			1& x & -\dfrac{b_2}{EI_i}&-\dfrac{b_3}{EI_i} & w^Q\\
+			0& 1 & -\dfrac{b'_2}{EI_i}&-\dfrac{b'_3}{EI_i}& \varphi^Q\\
+			0& 0 & b_0& b_1&M^Q\\
+			0& 0 & K b'_0& b'_1&Q^Q\\
+			0& 0 & 0& 0&1
+	\end{bmatrix}
+
+load integrals R (transverse-force-representation)
+--------------------------------------------------
+.. automodule:: stanpy
+    :members: calc_load_integral_R_poly
+
+.. jupyter-execute::
+
+    import stanpy as stp
+
+    x = sym.Symbol("x")
+    E = 3*10**7  # kN/m2
+    b = 0.2  # m
+    hi = 0.3  # m
+    hk = 0.4  # m
+    l = 3  # m
+    hx = hi + (hk - hi) / l * x
+
+    cs_props = stp.cs(b=b, h=hx)
+    s = {"E": E, "cs": cs_props, "l": l, "q":10, "N":-1000}
+    load_integral_R = stp.calc_load_integral_R_poly(x=[0,l/2,l],**s)
+
+    print(load_integral_R)
+
+.. math::
+    :label: load_R_non_constant_wR
+
+    w^R = w^Q + \dfrac{b_3}{EI_i}N w_1^V
+
+.. math::
+    :label: load_R_non_constant_phiR
+
+    \varphi^R = \varphi^Q + \dfrac{b'_3}{EI_i} N w_1^V
+
+.. math::
+    :label: load_R_non_constant_MR
+
+    M^R = M^Q - b_1 N w_1^V
+
+.. math::
+    :label: load_R_non_constant_QR
+
+    R^R = -\sum_0 a_{j+1}q_j-\left(a_1^*-a_1^{**}\right)q_\Delta-a_0^* P
+
+field matrix R (transverse-force-representation)
+------------------------------------------------
+.. automodule:: stanpy
+    :members: tr_R_poly
+
+.. jupyter-execute::
+
+    import stanpy as stp
+
+    x = sym.Symbol("x")
+    E = 3*10**7  # kN/m2
+    b = 0.2  # m
+    hi = 0.3  # m
+    hk = 0.4  # m
+    l = 3  # m
+    hx = hi + (hk - hi) / l * x
+
+    cs_props = stp.cs(b=b, h=hx)
+    s = {"E": E, "cs": cs_props, "l": l, "q":10, "N":-1000}
+
+    Fik = stp.tr_R_poly(**s)
+    print(Fik)
+
+.. math::
+    :label: field_R_constant
+
+    F_{ik}^R = 
+    \begin{bmatrix}
+			1 & b_1 & -\dfrac{b_2}{EI_i} &-\dfrac{b_3}{EI_i} &w^Q\\
+			0 & b'_1 & -\dfrac{b'_2}{EI_i} &-\dfrac{b'_3}{EI_i}&\varphi^Q\\
+			0 & - N b_1 & b_0 & b_1 & M^Q\\
+			0 & 0 & 0 & 1 & R^Q\\
+			0 & 0 & 0 & 0 & 1
+	\end{bmatrix}
 
 
 Citations
