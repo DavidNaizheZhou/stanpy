@@ -5,9 +5,9 @@
         :target: https://stanpy.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
-========
+********
 Overview
-========
+********
 
 Structural analysis libary in python
 
@@ -40,17 +40,3 @@ To run all the tests run::
 
 Note, to combine the coverage data from all the tox environments run:
 
-.. list-table::
-    :widths: 10 90
-    :stub-columns: 1
-
-    - - Windows
-      - ::
-
-            set PYTEST_ADDOPTS=--cov-append
-            tox
-
-    - - Other
-      - ::
-
-            PYTEST_ADDOPTS=--cov-append tox
