@@ -28,7 +28,7 @@ Documentation
 =============
 
 
-https://python-stanpy.readthedocs.io/
+https://stanpy-dev.david-zhou.org/
 
 
 Development
