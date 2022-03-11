@@ -16,6 +16,8 @@ include AUTHORS.rst
 include CHANGELOG.rst
 include CONTRIBUTING.rst
 include LICENSE
+include HISTORY.rst
+include SAVE.fig
 include README.rst
 
 
