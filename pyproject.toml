@@ -2,10 +2,12 @@
 requires = [
     "setuptools>=42",
     "wheel",
-    "numpy>=1.22",
-    "sympy>=1.10",
-    "scipy"
 ]
+
+install_requires=["numpy>=1.22",
+    "sympy>=1.10",
+    "scipy"]
+
 build-backend = "setuptools.build_meta"
 
 [tool.black]

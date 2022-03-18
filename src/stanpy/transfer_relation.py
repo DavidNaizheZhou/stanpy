@@ -92,11 +92,11 @@ def convert_poly_wv(function):
 def convert_psi0_w0_to_wv(**s):
     x = sp.Symbol("x")
     if ("w_0" in s.keys() or "psi_0" in s.keys()) and "l" in s.keys():
-        l = s.get("l")
+        beam_length = s.get("l")
         w0 = s.get("w_0", 0)
         psi_0 = s.get("psi_0", 0)
-        phivi = psi_0 + 4 * w0 / l
-        kappav = 8 * w0 / l**2
+        phivi = psi_0 + 4 * w0 / beam_length
+        kappav = 8 * w0 / beam_length**2
         # phiv = phivi-x*kappav
         wv = x * phivi - x**2 / 2 * kappav
         return wv
