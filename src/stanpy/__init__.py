@@ -2,7 +2,7 @@
 
 __author__ = """David Zhou"""
 __email__ = 'david.zhou@tuwien.ac.at'
-__version__ = '0.0.4'
+__version__ = '__version__ = '0.0.4''
 
 from .cross_section import *
 from .transfer_relation import *
