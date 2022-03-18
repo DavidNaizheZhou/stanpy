@@ -605,23 +605,25 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
         if isinstance(annotation, list) or isinstance(annotation, tuple):
             annotation_list = []
             for annotation_i in sorted(annotation, reverse=True):
-                mask_plot = x_plot == annotation_i
-                mask = x == annotation_i
+                # mask_plot = x_plot == annotation_i
+                # mask = x == annotation_i
+                mask_plot = np.allclose(x_plot, annotation_i)
+                mask = np.allclose(x, annotation_i)
                 if mask.any():
                     annotation_list.append(np.round(np.max(Rx[mask]), annotate_round))
                 else:
                     raise ValueError("annotate_x value = {} is not in x".format(annotation_i))
 
                 # annotation_list.append(np.round(np.max(Rx[mask]),annotate_round))
-            ax.vlines(
-                np.max(annotation),
-                0,
-                np.max(Rx_plot[mask_plot]),
-                color=c,
-                zorder=zorder,
-                **kwargs,
-                lw=1,
-            )
+            # ax.vlines(
+            #     np.max(annotation),
+            #     0,
+            #     np.max(Rx_plot[mask_plot]),
+            #     color=c,
+            #     zorder=zorder,
+            #     **kwargs,
+            #     lw=1,
+            # )
             annotation_list = np.sort(np.array(annotation_list))
 
             annotation_string = np.array2string(annotation_list, separator=",", suppress_small=True)
@@ -655,7 +657,7 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
             mask = x == annotation
 
             if mask.any():
-                ax.vlines(annotation, 0, np.max(Rx_plot[mask_plot]), color=c, zorder=zorder, **kwargs, lw=1)
+                # ax.vlines(annotation, 0, np.max(Rx_plot[mask_plot]), color=c, zorder=zorder, **kwargs, lw=1)
 
                 annotation_pos_y = np.max(Rx_plot[mask_plot])
                 if annotation_pos_y > 0:
@@ -683,72 +685,6 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
                     )
             else:
                 raise ValueError("annotate_x value = {} is not in x".format(annotation))
-
-
-def plot_M(ax, *args, **kwargs):
-    for s in args:
-        l = s["l"]
-        mx = s["M_sol"]
-        x = np.linspace(0, l, mx.size)
-        x_plot = np.zeros(x.size + 2)
-        mx_plot = np.zeros(x.size + 2)
-        x_plot[1:-1] = x
-        x_plot[-1] = x[-1]
-        mx_plot[1:-1] = -mx / np.max(np.abs(mx))
-
-        hatch = kwargs.pop("hatch", "")
-        fill_p = kwargs.pop("fill_p", None)
-        fill_n = kwargs.pop("fill_n", None)
-        fill = kwargs.pop("fill", None)
-        alpha = kwargs.pop("alpha", 1)
-        zorder = kwargs.pop("zorder", 1)
-        c = kwargs.pop("c", "black")
-        lw = kwargs.pop("lw", 1)
-        if fill != None:
-            ax.fill_between(
-                x_plot,
-                mx_plot,
-                where=mx_plot < 0,
-                y2=0,
-                hatch=hatch,
-                zorder=zorder,
-                fc=fill,
-                alpha=alpha,
-            )
-            ax.fill_between(
-                x_plot,
-                mx_plot,
-                where=mx_plot > 0,
-                y2=0,
-                hatch=hatch,
-                zorder=zorder,
-                fc=fill,
-                alpha=alpha,
-            )
-        else:
-            if fill_p != None:
-                ax.fill_between(
-                    x_plot,
-                    mx_plot,
-                    where=mx_plot < 0,
-                    y2=0,
-                    hatch=hatch,
-                    zorder=zorder,
-                    fc=fill_p,
-                    alpha=alpha,
-                )
-            if fill_n != None:
-                ax.fill_between(
-                    x_plot,
-                    mx_plot,
-                    where=mx_plot > 0,
-                    y2=0,
-                    hatch=hatch,
-                    zorder=zorder,
-                    fc=fill_n,
-                    alpha=alpha,
-                )
-        ax.plot(x_plot, mx_plot, zorder=zorder, lw=lw, c=c, **kwargs)
 
 
 def plot_M(ax, x: np.ndarray = np.array([]), Mx: np.ndarray = np.array([]), **kwargs):
@@ -837,15 +773,15 @@ def plot_M(ax, x: np.ndarray = np.array([]), Mx: np.ndarray = np.array([]), **kw
 
             annotation_list = np.sort(np.array(annotation_list))
             annotation_string = np.array2string(annotation_list, separator=",", suppress_small=True)
-            ax.vlines(
-                np.max(annotation),
-                0,
-                np.max(mx_plot[mask_plot]),
-                color=c,
-                **kwargs,
-                zorder=zorder,
-                lw=1,
-            )
+            # ax.vlines(
+            #     np.max(annotation),
+            #     0,
+            #     np.max(mx_plot[mask_plot]),
+            #     color=c,
+            #     **kwargs,
+            #     zorder=zorder,
+            #     lw=1,
+            # )
             annotation_pos_y = np.max(mx_plot[mask_plot])
             if annotation_pos_y < 0:
                 ax.annotate(
@@ -873,7 +809,7 @@ def plot_M(ax, x: np.ndarray = np.array([]), Mx: np.ndarray = np.array([]), **kw
             mask_plot = x_plot == annotation
             mask = x == annotation
             if mask.any():
-                ax.vlines(annotation, 0, np.max(mx_plot[mask_plot]), color=c, zorder=zorder, **kwargs, lw=1)
+                # ax.vlines(annotation, 0, np.max(mx_plot[mask_plot]), color=c, zorder=zorder, **kwargs, lw=1)
                 annotation_pos_y = np.max(mx_plot[mask_plot])
                 if annotation_pos_y < 0:
                     ax.annotate(

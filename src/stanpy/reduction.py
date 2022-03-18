@@ -57,7 +57,7 @@ def A_w(s, detach=None):
         return A, P_detach_mat(detach), P_inject_mat(detach, row=3)
 
 
-def A_M(s, detach):
+def A_M(s, detach=None):
     Fji = stp.tr(s)
     if Fji[2, 1] == 0:
         A = np.array(
