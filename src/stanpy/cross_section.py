@@ -2,7 +2,6 @@ __all__ = ['cs', 'I_fun_taylor', 'cs_dict']
 
 import numpy as np
 import sympy as sp
-import pandas as pd
 from scipy.interpolate import approximate_taylor_polynomial
 import pprint
 
