@@ -36,7 +36,7 @@ def test_ex01():
 
     x = np.sort(np.append(np.linspace(0, l, 100), 3))
     Fxa = stp.tr(s, x=x)
-    Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    # Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
     Z_a, Z_b = stp.tr_solver(s)
     Z_x = Fxa.dot(Z_a).round(10)
 
@@ -97,7 +97,7 @@ def test_ex02():
     x = np.sort(np.append(x, annotation))
 
     Fxa = stp.tr(s, x=x)
-    Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    Z_a, Z_b = stp.tr_solver(s)
     Z_x = Fxa.dot(Z_a).round(10)
 
     w_x = Z_x[:, 0]
@@ -356,6 +356,7 @@ def test_ex04():
     np.testing.assert_allclose(Fba[4, :], Fba_sol[4, :], rtol=1e-05)
 
     Za, Zc = stp.solve_tr(Fca, **s)
+    Za, Zc = stp.tr_solver(s)
 
     np.testing.assert_allclose(Za, np.array([0, 0, -76.784, 29.797, 1]), rtol=1e-04)
     np.testing.assert_allclose(Zc, np.array([0, -37.555e-4, 0, -4.203, 1]), rtol=1e-04)

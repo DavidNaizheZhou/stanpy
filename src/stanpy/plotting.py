@@ -615,10 +615,11 @@ def plot_R(ax, x: np.ndarray = np.array([]), Rx: np.ndarray = np.array([]), **kw
         if isinstance(annotation, list) or isinstance(annotation, tuple):
             annotation_list = []
             for annotation_i in sorted(annotation, reverse=True):
-                # mask_plot = x_plot == annotation_i
-                # mask = x == annotation_i
-                mask_plot = np.allclose(x_plot, annotation_i)
-                mask = np.allclose(x, annotation_i)
+                mask_plot = x_plot == annotation_i
+                mask = x == annotation_i
+                # mask_plot = np.allclose(x_plot, annotation_i)
+                # mask = np.array([np.allclose(x, annotation_i)]).flatten()
+                # mask = x==annotation_i
                 if mask.any():
                     annotation_list.append(np.round(np.max(Rx[mask]), annotate_round))
                 else:

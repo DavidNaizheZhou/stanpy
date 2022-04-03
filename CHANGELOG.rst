@@ -2,7 +2,8 @@
 Changelog
 =========
 
-0.0.1 (2022-02-18)
+0.2.2 (2022-03-04)
 ------------------
 
-* First release on PyPI.
+* implemenation tr_solver
+* implementation tr 

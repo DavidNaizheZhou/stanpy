@@ -53,7 +53,7 @@ EX01-02 (solution)
     x_annoation = [0,l1, l1+l2, (l1+l2)/2]
     x = np.sort(np.append(x, x_annoation))
     F_xa = stp.tr(*s, x=x)
-    Z_a, Z_c = stp.solve_tr(F_xa[-1], bc_i=s1["bc_i"], bc_k=s2["bc_k"])
+    Z_a, Z_c = stp.tr_solver(*s)
 
     Z_x = F_xa.dot(Z_a)
 
@@ -85,7 +85,7 @@ EX01-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, *s)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=x_annoation, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_solution(ax, x=x, y=V_x, annotate_x=x_annoation, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-1.5, 1.5)
@@ -162,7 +162,7 @@ EX02-02 (solution)
     x = np.sort(np.append(x, x_annotate))
     Fxa = stp.tr(*s, x=x)
 
-    Z_a, Z_d = stp.solve_tr(Fxa[-1], bc_i=s1["bc_i"], bc_k=s3["bc_k"])
+    Z_a, Z_d = stp.tr_solver(*s)
     Z_x = Fxa.dot(Z_a)
 
     print("Z_a =", Z_a)
@@ -195,7 +195,7 @@ EX02-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, *s)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=x_annotate, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_solution(ax, x=x, y=V_x, annotate_x=x_annotate, fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-0.8, 0.8)

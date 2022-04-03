@@ -40,9 +40,8 @@ EX01-02 (solution)
     dx = 1e-9
     x = np.linspace(0, l, 100)
     x = np.sort(np.append(x, [l / 2, l / 4, 3 * l / 4, l-dx]))
+    Z_a, Z_b  = stp.tr_solver(s)
     Fxa = stp.tr(s, x=x)
-    Z_a, Z_b  = stp.solve_tr(Fxa[-1], **s)
-
     Z_x = Fxa.dot(Z_a)
 
     print("Z_a =", Z_a)
@@ -73,7 +72,7 @@ EX01-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, l / 2, l / 4, 3 * l / 4, l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_solution(ax, x=x, y=V_x, annotate_x=[0, l / 2, l / 4, 3 * l / 4, l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-0.8, 0.8)
@@ -136,7 +135,7 @@ EX02-02 (solution)
     x = np.sort(np.append(x, annotation))
 
     Fxa = stp.tr(s, x=x)
-    Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    Z_a, Z_b = stp.tr_solver(s)
     Z_x = Fxa.dot(Z_a)
 
     print("Z_a =", Z_a)
@@ -154,8 +153,9 @@ Kräfte werden jeweils am Stabende angsetzt
     s3 = {"EI": EI, "l": 1, "P3": (P+2, 1)}
     s4 = {"EI": EI, "l": 2, "bc_k": {"w": 0, "M": 0, "H": 0}}
 
-    Fxa = stp.tr(s1, s2, s3, s4, x=x)
-    Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    s = [s1, s2, s3, s4]
+    Fxa = stp.tr(*s, x=x)
+    Z_a, Z_b = stp.tr_solver(*s)
     Z_x = Fxa.dot(Z_a)
 
     print("Z_a =", Z_a)
@@ -173,8 +173,10 @@ Kräfte werden jeweils am Stabanfang angsetzt
     s3 = {"EI": EI, "l": 1, "P2": (P+1, 0)}
     s4 = {"EI": EI, "l": 2, "P1": (P+2, 0), "bc_k": {"w": 0, "M": 0, "H": 0}}
 
-    Fxa = stp.tr(s1, s2, s3, s4, x=x)
-    Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    s = [s1, s2, s3, s4]
+
+    Fxa = stp.tr(*s, x=x)
+    Z_a, Z_b = stp.tr_solver(*s)
     Z_x = Fxa.dot(Z_a)
 
     print("Z_a =", Z_a)
@@ -191,7 +193,7 @@ EX02-03 (plotting)
 
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
-    stp.plot_system(ax, s)
+    stp.plot_system(ax, *s)
     stp.plot_M(ax, x=x, Mx=M_x, annotate_x=[2, 3, 4], fill_p="red", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
@@ -204,8 +206,8 @@ EX02-03 (plotting)
 
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
-    stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, [2-dx, 2], 3-dx, 3, [4, 4-dx], 6-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_system(ax, *s, watermark_pos=1)
+    stp.plot_solution(ax, x=x, y=V_x, annotate_x=[0, [2-dx, 2], 3-dx, 3, [4, 4-dx], 6-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-1.5, 1.5)
@@ -217,7 +219,7 @@ EX02-03 (plotting)
 
     scale = 0.2
     fig, ax = plt.subplots(figsize=(12, 5))
-    stp.plot_system(ax, s, watermark_pos=1, lw=1, linestyle=":", c="#111111")
+    stp.plot_system(ax, *s, watermark_pos=1, lw=1, linestyle=":", c="#111111")
     stp.plot_w(ax, x=x, wx=w_x, scale=scale, linestyle="-")
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
@@ -270,7 +272,7 @@ EX03-02-01 (solution)
     x = np.sort(np.append(x, annotation))
 
     Fxa = stp.tr(s, x=x)
-    Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    Z_a, Z_b = stp.tr_solver(s)
     Z_x = Fxa.dot(Z_a)
 
     print("Z_a =", Z_a)
@@ -316,7 +318,7 @@ EX03-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, [l/3-dx, l/3], l/2, l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_solution(ax, x=x, y=V_x, annotate_x=[0, [l/3-dx, l/3], l/2, l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-1, 1)
@@ -385,7 +387,7 @@ EX04-02 (solution)
     x = np.sort(np.append(x, annotation))
 
     Fxa = stp.tr(s, x=x)
-    Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    Z_a, Z_b = stp.tr_solver(s)
     Z_x = Fxa.dot(Z_a)
 
     print("Z_a =", Z_a)
@@ -431,7 +433,7 @@ EX04-03 (plotting)
     scale = 0.5
     fig, ax = plt.subplots(figsize=(12, 5))
     stp.plot_system(ax, s, watermark_pos=1)
-    stp.plot_V(ax, x=x, Vx=V_x, annotate_x=[0, [l/2-dx, l/2], l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
+    stp.plot_solution(ax, x=x, y=V_x, annotate_x=[0, [l/2-dx, l/2], l-dx], fill_p="red", fill_n="blue", scale=scale, alpha=0.2)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
     ax.set_ylim(-0.8, 1.2)
