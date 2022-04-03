@@ -37,6 +37,7 @@ def test_ex01():
     x = np.sort(np.append(np.linspace(0, l, 100), 3))
     Fxa = stp.tr(s, x=x)
     Z_a, Z_b = stp.solve_tr(Fxa[-1], **s)
+    Z_a, Z_b = stp.tr_solver(s)
     Z_x = Fxa.dot(Z_a).round(10)
 
     wx = Z_x[:, 0]

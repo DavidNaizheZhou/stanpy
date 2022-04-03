@@ -1,7 +1,24 @@
+from hashlib import sha384
 import stanpy as stp
 import numpy as np
 
+from stanpy.transfer_relation import solve_tr
 
+Xw = np.zeros((5,5))
+Xw[0,0] = 1
+Xphi = np.zeros((5,5))
+Xphi[1,1] = 1
+XM = np.zeros((5,5))
+XM[2,2] = 1
+XR = np.zeros((5,5))
+XR[3,3] = 1
+
+Pw = np.zeros((5,5))
+Pw[3,:] = 1
+PM = np.zeros((5,5))
+PM[1,:] = 1
+
+ 
 def P_detach_mat(detach):
     P = np.zeros((5, 5))
     if detach == "w":
@@ -39,6 +56,148 @@ def tr_plus(s, detach="V", inject="V"):
     Fji_k = Fji_i.dot(A_j) + P_plus
     return Fji_k, A_j
 
+def tr_plus2(s, detach="V", inject="V"):
+    eye = np.eye(5,5)
+    Fji_i = stp.tr(s)
+    detach_dict = {"V":XR, "R":XR, "M":XM, "phi":Xphi, "w":Xw}
+    X = detach_dict[detach]
+    if inject == "V" or inject == "R":
+        A = A_w(s)
+        P = Pw.dot(X)
+        A_j = X.dot(A)+eye
+    elif inject == "phi":
+        A = A_M(s)
+        P = PM.dot(X)
+        A_j = X.dot(A)+eye
+    Fji_k = Fji_i.dot(A_j) + P
+    return Fji_k, A_j
+
+def detachable(bc):
+    if (k in bc for k in ("w","phi")):
+        return ["R", "M"]
+    elif (k in bc for k in ("w")):
+        return ["R"]
+    elif (k in bc for k in ("M")):
+        return ["phi"]
+    elif bc==None:
+        return [None]
+
+def injectable(bc):
+    if {"w":0}==bc:
+        return ["R"]
+    elif {"M":0}==bc:
+        return ["phi"]
+    elif bc==None:
+        return [None]
+    else:
+        return [None]
+
+def tr_red(s_list:list, x:np.ndarray):
+    if isinstance(s_list, dict):
+        s_list = [s_list]
+
+    if isinstance(x, (int, float, list)):
+        x = np.array([x]).flatten()
+
+    if x.size == 0:
+        x = stp.calc_x_system(*s_list)
+
+    bc_interface = np.empty(len(s_list)+1, dtype=object)
+    bc_interface[1:-1] = stp.get_bc_interfaces(*s_list)
+    # bc_interface = stp.get_bc_interfaces(*s_list)
+
+    tr_R_ends = np.zeros((len(s_list) + 1, 5, 5))
+    tr_R_ends[0, :, :] = np.eye(5, 5)
+
+    tr_R_x = np.zeros((x.size, 5, 5))
+
+    lengths, x_mask = stp.calc_x_mask(s_list, x)
+    A = np.empty((len(s_list)+1, 5, 5))
+    A[-1] = np.eye(5,5)
+    F, A[:-1] = tr_red_ends(s_list)
+    
+    for i, s in enumerate(s_list):
+        EI, GA = stp.load_material_parameters(**s)
+        if isinstance(EI, (float, int)):
+            # if i == 1:
+            #     tr_R_ends[i + 1, :, :] = stp.tr_R(**s).dot(tr_R_ends[i, :, :])
+            # else:
+            tr_R_ends[i + 1, :, :] = A[i+1].dot(stp.tr_R(**s)).dot(tr_R_ends[i, :, :])
+            tr_R_x[x_mask[i], :, :] = stp.tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+        elif isinstance(EI, np.poly1d):
+            tr_R_ends[i + 1, :, :] = A[i+1].dot(stp.tr_R_poly(**s)).dot(tr_R_ends[i, :, :])
+            tr_R_x[x_mask[i], :, :] = stp.tr_R_poly(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+    
+    if x.size == 1:
+        tr_R_x = tr_R_x.reshape((5, 5))
+
+    return tr_R_x
+
+def tr_red_ends(s_list:list):
+    bc = fill_bc_dictionary_slab(*s_list)
+    bc_interace = get_bc_interfaces(*s_list)
+
+    number_slabs = len(s_list)
+    l = np.array([s.get("l") for s in s_list])
+    bc_i = [s.get("bc_i") for s in s_list]
+    bc_k = [s.get("bc_k") for s in s_list]
+
+    F = np.empty((number_slabs, 5, 5))
+    A = np.empty((number_slabs, 5, 5))
+
+    last_detachable = None
+    for i, s in enumerate(s_list):
+        bc_i = bc[i*2]
+        bc_k = bc[i*2+1]
+        
+
+        if bc_i == None:
+            bc_i = {}
+        if bc_k == None:
+            bc_k = {}
+
+        if bc_i!={} and bc_k!={} and i!=number_slabs-1:
+            detach = detachable(bc_i)[0]
+            inject = injectable(bc_k)[0]
+            F[i], A[i] = tr_plus2(s, detach=detach, inject=inject)
+            last_detachable = detach
+        elif bc_k == {}:
+            F[i] = stp.tr(s)
+            A[i] = np.eye(5,5)
+        elif i==number_slabs-1:
+            F[i] = stp.tr(s)
+            detach = detachable(bc_i)[0]
+            inject = injectable(bc_k)[0]
+            if inject==None:
+                inject = "V"
+            _, A[i] = tr_plus2(s, detach=detach, inject=inject)
+        elif bc_i == {} and bc_k != {}:
+            detach = last_detachable
+            inject = injectable(bc_k)[0]
+            print(i, detach, inject)
+            F[i], A[i] = tr_plus2(s, detach=detach, inject=inject)
+
+    return F, A
+
+def solve_tr_red(s_list:list):
+
+    bc = fill_bc_dictionary_slab(*s_list)
+    number_slabs = len(s_list)
+
+    Fxx = np.empty((number_slabs+1, 5, 5))
+    Fxx[0] = np.eye(5,5)
+
+    F, A = tr_red_ends(s_list)
+
+    for i, Fi in enumerate(F):
+        Fxx[i+1] = Fi.dot(Fxx[i])
+
+    Zi_star, Zk = solve_tr(Fxx[-1], bc_i=bc[0], bc_k=bc[-1])
+    Zi = A[0].dot(Zi_star)
+
+    return Zi, Zk
+        
+    
 
 def A_w(s, detach=None):
     Fji = stp.tr(s)
@@ -187,7 +346,7 @@ def fill_bc_dictionary_slab(*slabs):
         bc[2:-1:2] = bc[1:-1:2]
     elif (bc[2:-1:2] != None).any():
         bc[1:-1:2] = bc[2:-1:2]
-
+    return bc
 
 def get_bc_interfaces(*slabs):
     bc_i = [s.get("bc_i") for s in slabs]
@@ -201,8 +360,6 @@ def solve_system2(*s, x: np.ndarray = np.array([])):
 
     fill_bc_dictionary_slab(*s)
     bc_interface = get_bc_interfaces(*s)
-
-    print(bc_interface)
 
     return 0, 0
 
@@ -274,45 +431,43 @@ def solve_system(*slabs, x: np.ndarray = np.array([])):
 if __name__ == "__main__":
 
     import numpy as np
-    import sympy as sym
-    import stanpy as stp
-    from scipy.signal import argrelextrema
+    np.set_printoptions(precision=6, threshold=5000)
     import matplotlib.pyplot as plt
+    import stanpy as stp
 
     EI = 32000  # kN/m2
-    l = 6  # m
-    q = 5  # kN/m
+    l = 3  # m
 
     hinged_support = {"w": 0, "M": 0}
     roller_support = {"w": 0, "M": 0, "H": 0}
     fixed_support = {"w": 0, "phi": 0}
 
-    s1 = {"EI": EI, "l": l, "bc_i": {"w": 0, "phi": 0}, "bc_k": {"M": 0}, "q": q}
-    s2 = {"EI": EI, "l": l, "bc_k": {"w": 0, "phi": 0}, "q": q}
+    s1 = {"EI": EI, "l": l, "bc_i": hinged_support, "bc_k": {"w": 0}, "q": 10}
+    s2 = {"EI": EI, "l": l, "bc_k": {"M": 0}, "q": 10}
+    # s2 = {"EI": EI, "l": l, "q": 10}
+    s3 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "q": 10}
+    s4 = {"EI": EI, "l": l, "bc_k": roller_support}
 
-    s = [s1, s2]
+    s = [s1, s2, s3, s4]
 
-    dx = 1e-10
-    x = np.sort(np.append(np.linspace(0, 12, 1000), [0 + dx, l, l - dx]))
-    # x, Zx = stp.solve_system(*s, x=x)
-    x, Zx = stp.solve_system2(*s, x=x)
+    fig, ax = plt.subplots()
+    stp.plot_system(ax, *s)
+    plt.show()
 
-    quit()
+    x = np.sort(np.append(np.linspace(0,4*l,4000), [l,2*l, 3*l, 4*l]))
 
-    print(Zx[0])
-    print(Zx[x == l])
-    print(Zx[-1])
-    local_mins_idx = argrelextrema(Zx[:, 2], np.greater)
-
-    x_annotate = np.append([0, l, 2 * l], x[local_mins_idx])
+    Zi, Zk = stp.tr_solver(*s)
+    Fx = stp.tr(*s, x=x)
+    Zx = Fx.dot(Zi).round(10)
+  
     scale = 0.5
-    fig, (ax, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 15))
-    stp.plot_system(ax, *s, watermark_pos=2)
+    fig, ax = plt.subplots()
+    stp.plot_system(ax, *s, watermark=False)
     stp.plot_M(
         ax,
         x=x,
         Mx=Zx[:, 2],
-        annotate_x=x_annotate,
+        annotate_x=[0,l,2*l, 3*l, 4*l],
         fill_p="red",
         fill_n="blue",
         scale=scale,
@@ -320,8 +475,10 @@ if __name__ == "__main__":
     )
 
     ax.set_ylim(-1, 1)
-    ax.set_title("\mathbf{[ M ]~=~kNm}")
     ax.axis('off')
+
+    plt.show()
+    quit()
 
     stp.plot_system(ax2, *s, watermark=False)
     stp.plot_R(

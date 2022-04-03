@@ -1019,42 +1019,31 @@ def tr(
     if x.size == 0:
         x = stp.calc_x_system(*args)
 
-    tr_R_ends = np.zeros((len(args) + 1, 5, 5))
-    tr_R_ends[0, :, :] = np.eye(5, 5)
+    bc_interface =list(filter(None, stp.get_bc_interfaces(*args)))
 
-    tr_R_x = np.zeros((x.size, 5, 5))
+    if len(bc_interface) == 0:
+        tr_R_ends = np.zeros((len(args) + 1, 5, 5))
+        tr_R_ends[0, :, :] = np.eye(5, 5)
 
-    lengths, x_mask = calc_x_mask(args, x)
+        tr_R_x = np.zeros((x.size, 5, 5))
 
-    for i, s in enumerate(args):
-        EI, GA = load_material_parameters(**s)
-        # if apply_reduction_method(*args):
-        #     pass
-        #     #     stp.fill_bc_dictionary_slab(*args)
-        #     #     if isinstance(EI, (float, int)):
-        #     #         if i == 0:
-        #     #             tr_R_ends[i + 1, :, :] = tr_R(**s).dot(tr_R_ends[i, :, :])
-        #     #         else:
-        #     #             if s["bc_k"] == {"w": 0}:
-        #     #                 A, P = aii_0(args[i - 1]["bc_k"], **s)
-        #     #                 tr_R_ends[i + 1, :, :] = (tr_R(**s).dot(A) + P).dot(tr_R_ends[i, :, :])
+        lengths, x_mask = calc_x_mask(args, x)
 
-        #     #         tr_R_x[x_mask[i], :, :] = tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
-        #     #     elif isinstance(EI, np.poly1d):
-        #     #         tr_R_ends[i + 1, :, :] = tr_R_poly(**s)
-        #     #         tr_R_x[x_mask[i], :, :] = tr_R_poly(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
-        # else:
-        if isinstance(EI, (float, int)):
-            tr_R_ends[i + 1, :, :] = tr_R(**s).dot(tr_R_ends[i, :, :])
-            tr_R_x[x_mask[i], :, :] = tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
-        elif isinstance(EI, np.poly1d):
-            tr_R_ends[i + 1, :, :] = tr_R_poly(**s).dot(tr_R_ends[i, :, :])
-            tr_R_x[x_mask[i], :, :] = tr_R_poly(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+        for i, s in enumerate(args):
+            EI, GA = load_material_parameters(**s)
+            if isinstance(EI, (float, int)):
+                tr_R_ends[i + 1, :, :] = tr_R(**s).dot(tr_R_ends[i, :, :])
+                tr_R_x[x_mask[i], :, :] = tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+            elif isinstance(EI, np.poly1d):
+                tr_R_ends[i + 1, :, :] = tr_R_poly(**s).dot(tr_R_ends[i, :, :])
+                tr_R_x[x_mask[i], :, :] = tr_R_poly(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
 
-    if x.size == 1:
-        tr_R_x = tr_R_x.reshape((5, 5))
+        if x.size == 1:
+            tr_R_x = tr_R_x.reshape((5, 5))
 
-    return tr_R_x
+        return tr_R_x
+    else:
+        return stp.tr_red(args, x=x)
 
 
 def R_to_Q(x: np.ndarray = np.array([]), solution_vector: np.ndarray = np.array([]), *args):
@@ -1352,9 +1341,23 @@ def aii_11(Mji=0, **s):
     )
 
 
-def solve_tr_red(*args, Fxi):
-    pass
+def tr_solver(*s_list):
+    """solves a list of slabs with the transferrelation method
 
+    :return: _description_
+    :rtype: _type_
+    """
+    bc_interface =list(filter(None, stp.get_bc_interfaces(*s_list)))
+    if len(bc_interface) == 0:
+        bc = stp.fill_bc_dictionary_slab(*s_list)
+        Fxx = stp.tr(*s_list)
+        if Fxx.shape==(5,5):
+            Zi, Zk = stp.solve_tr(Fxx, bc_i=bc[0], bc_k=bc[-1])
+        else:
+            Zi, Zk = stp.solve_tr(Fxx[-1], bc_i=bc[0], bc_k=bc[-1])
+    else:
+        Zi, Zk = stp.solve_tr_red(s_list)
+    return Zi, Zk
 
 def solve_tr(Fki, **s):
     indices = np.arange(4)
