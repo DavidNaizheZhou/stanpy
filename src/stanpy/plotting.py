@@ -326,7 +326,7 @@ def plot_system(ax, *args, **kwargs):
     hinge_size = kwargs.pop("hinge_size", 22)
     hinge = kwargs.pop("hinge", True)
     watermark_pos = kwargs.pop("watermark_pos", 4)
-    plot_watermark = kwargs.pop("watermark", True)
+    plot_watermark = kwargs.pop("watermark", False)
     size = kwargs.pop("s", 30)
     for s in args:
         if "l" in s.keys():
@@ -520,8 +520,18 @@ def plot_load_distribution(ax, x, y, thickness, q_offset=0, **kwargs):
 def plot_V(ax, x: np.ndarray = np.array([]), Vx: np.ndarray = np.array([]), **kwargs):
     plot_R(ax=ax, x=x, Rx=Vx, **kwargs)
 
-
 def plot_solution(ax, x: np.ndarray = np.array([]), y: np.ndarray = np.array([]), flip_y=False, **kwargs):
+    """Plotting of the solution vector
+
+    :param ax: _description_
+    :type ax: _type_
+    :param x: _description_, defaults to np.array([])
+    :type x: np.ndarray, optional
+    :param y: _description_, defaults to np.array([])
+    :type y: np.ndarray, optional
+    :param flip_y: _description_, defaults to False
+    :type flip_y: bool, optional
+    """
     if flip_y:
         plot_M(ax=ax, x=x, Mx=y, **kwargs)
     else:
@@ -858,7 +868,7 @@ def plot_psi_0(ax, s, **kwargs):
 def plot_cs(ax, b_vec, h_vec, ysi=np.array([]), zsi=np.array([]), **kwargs):
 
     watermark_pos = kwargs.pop("watermark_pos", 4)
-    plot_watermark = kwargs.pop("watermark", True)
+    plot_watermark = kwargs.pop("watermark", False)
     edgecolor = kwargs.pop("edgecolor", "black")
     facecolor = kwargs.pop("facecolor", "#111111")
     alpha = kwargs.pop("alpha", 0.3)
@@ -975,13 +985,13 @@ if __name__ == "__main__":
     fixed_support = {"w": 0, "phi": 0}
     hinge = {"M": 0}
 
-    s0 = {"EI": EI, "l": l, "bc_i": fixed_support, "bc_k": {"w": 0}}
-    s1 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "q": q}
-    s2 = {"EI": EI, "l": l, "bc_k": {"w": 0}}
-    s3 = {"EI": EI, "l": l, "bc_k": hinge, "q": q, "P": (P, l)}
-    s4 = {"EI": EI, "l": l, "bc_k": {"w": 0}}
-    s5 = {"EI": EI, "l": l, "bc_k": hinge}
-    s6 = {"EI": EI, "l": l, "bc_k": roller_support, "P": (P, l / 2), "N": (10, l)}
+    s0 = {"EI": EI, "l": l, "bc_i": fixed_support, "bc_k": {"w": 0}, "N": (-1000, l)}
+    s1 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "q": q, "N": (-1000, l)}
+    s2 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "N": (-1000, l)}
+    s3 = {"EI": EI, "l": l, "bc_k": hinge, "q": q, "P": (P, l), "N": (-1000, l)}
+    s4 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "N": (-1000, l)}
+    s5 = {"EI": EI, "l": l, "bc_k": hinge, "N": (-1000, l)}
+    s6 = {"EI": EI, "l": l, "bc_k": roller_support, "P": (P, l / 2), "N": (-1000, l)}
 
     s = [s0, s1, s2, s3, s4, s5, s6]
 

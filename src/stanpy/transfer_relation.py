@@ -1020,7 +1020,6 @@ def tr(
         x = stp.calc_x_system(*args)
 
     bc_interface =list(filter(None, stp.get_bc_interfaces(*args)))
-
     if len(bc_interface) == 0:
         tr_R_ends = np.zeros((len(args) + 1, 5, 5))
         tr_R_ends[0, :, :] = np.eye(5, 5)

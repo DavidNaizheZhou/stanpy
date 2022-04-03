@@ -58,7 +58,11 @@ def tr_plus(s, detach="V", inject="V"):
 
 def tr_plus2(s, detach="V", inject="V"):
     eye = np.eye(5,5)
-    Fji_i = stp.tr(s)
+    if isinstance(s, list):
+        Fji_i = stp.tr(*s)[-1]
+    elif isinstance(s, dict):
+        Fji_i = stp.tr(s)
+    
     detach_dict = {"V":XR, "R":XR, "M":XM, "phi":Xphi, "w":Xw}
     X = detach_dict[detach]
     if inject == "V" or inject == "R":
@@ -73,11 +77,11 @@ def tr_plus2(s, detach="V", inject="V"):
     return Fji_k, A_j
 
 def detachable(bc):
-    if (k in bc for k in ("w","phi")):
+    if all(k in bc for k in ("w","phi")):
         return ["R", "M"]
-    elif (k in bc for k in ("w")):
+    elif all(k in bc for k in ("w")):
         return ["R"]
-    elif (k in bc for k in ("M")):
+    elif all(k in bc for k in ("M")):
         return ["phi"]
     elif bc==None:
         return [None]
@@ -115,13 +119,9 @@ def tr_red(s_list:list, x:np.ndarray):
     A = np.empty((len(s_list)+1, 5, 5))
     A[-1] = np.eye(5,5)
     F, A[:-1] = tr_red_ends(s_list)
-    
     for i, s in enumerate(s_list):
         EI, GA = stp.load_material_parameters(**s)
         if isinstance(EI, (float, int)):
-            # if i == 1:
-            #     tr_R_ends[i + 1, :, :] = stp.tr_R(**s).dot(tr_R_ends[i, :, :])
-            # else:
             tr_R_ends[i + 1, :, :] = A[i+1].dot(stp.tr_R(**s)).dot(tr_R_ends[i, :, :])
             tr_R_x[x_mask[i], :, :] = stp.tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
         elif isinstance(EI, np.poly1d):
@@ -144,39 +144,44 @@ def tr_red_ends(s_list:list):
 
     F = np.empty((number_slabs, 5, 5))
     A = np.empty((number_slabs, 5, 5))
+    A[:] = np.eye(5,5)
 
     last_detachable = None
+    s_poly = []
     for i, s in enumerate(s_list):
         bc_i = bc[i*2]
         bc_k = bc[i*2+1]
-        
 
         if bc_i == None:
             bc_i = {}
         if bc_k == None:
             bc_k = {}
-
+        
         if bc_i!={} and bc_k!={} and i!=number_slabs-1:
             detach = detachable(bc_i)[0]
             inject = injectable(bc_k)[0]
             F[i], A[i] = tr_plus2(s, detach=detach, inject=inject)
             last_detachable = detach
         elif bc_k == {}:
-            F[i] = stp.tr(s)
+            # F[i] = stp.tr(s)
+            F[i] = np.eye(5,5)
             A[i] = np.eye(5,5)
+            s_poly.append(s)
         elif i==number_slabs-1:
-            F[i] = stp.tr(s)
+            s_poly.append(s)
+            F[i] = stp.tr(*s_poly)
             detach = detachable(bc_i)[0]
             inject = injectable(bc_k)[0]
             if inject==None:
                 inject = "V"
-            _, A[i] = tr_plus2(s, detach=detach, inject=inject)
+            _, A[i-len(s_poly)+1] = tr_plus2(s_poly, detach=detach, inject=inject)
+            s_poly=[] 
         elif bc_i == {} and bc_k != {}:
+            s_poly.append(s)
             detach = last_detachable
             inject = injectable(bc_k)[0]
-            print(i, detach, inject)
-            F[i], A[i] = tr_plus2(s, detach=detach, inject=inject)
-
+            F[i], A[i-len(s_poly)+1] = tr_plus2(s_poly, detach=detach, inject=inject)
+            s_poly=[] 
     return F, A
 
 def solve_tr_red(s_list:list):
@@ -200,7 +205,13 @@ def solve_tr_red(s_list:list):
     
 
 def A_w(s, detach=None):
-    Fji = stp.tr(s)
+    if isinstance(s, list):
+        Fji = stp.tr(*s)
+        if len(Fji.shape)>2:
+            Fji=Fji[-1]
+    elif isinstance(s, dict):
+        Fji = stp.tr(s)
+
     A = np.array(
         [
             [-1.0, -Fji[0, 1], -Fji[0, 2], -Fji[0, 3], -Fji[0, 4]],
@@ -217,7 +228,10 @@ def A_w(s, detach=None):
 
 
 def A_M(s, detach=None):
-    Fji = stp.tr(s)
+    if isinstance(s, list):
+        Fji = stp.tr(*s)
+    elif isinstance(s, dict):
+        Fji = stp.tr(s)
     if Fji[2, 1] == 0:
         A = np.array(
             [
@@ -443,9 +457,10 @@ if __name__ == "__main__":
     fixed_support = {"w": 0, "phi": 0}
 
     s1 = {"EI": EI, "l": l, "bc_i": hinged_support, "bc_k": {"w": 0}, "q": 10}
-    s2 = {"EI": EI, "l": l, "bc_k": {"M": 0}, "q": 10}
-    # s2 = {"EI": EI, "l": l, "q": 10}
-    s3 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "q": 10}
+    s2 = {"EI": EI, "l": l, "bc_k": {"M": 0}, "q": 8}
+    # s2 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "q": 8}
+    # s2 = {"EI": EI, "l": l, "q": 8}
+    s3 = {"EI": EI, "l": l, "bc_k": {"w": 0}, "q": 6}
     s4 = {"EI": EI, "l": l, "bc_k": roller_support}
 
     s = [s1, s2, s3, s4]
@@ -459,6 +474,15 @@ if __name__ == "__main__":
     Zi, Zk = stp.tr_solver(*s)
     Fx = stp.tr(*s, x=x)
     Zx = Fx.dot(Zi).round(10)
+
+    # Fba_plus, Ab = stp.tr_plus2(s1)
+    # Fdb_plus, Ad = stp.tr_plus2([s2,s3])
+    # Fed = stp.tr(s4)
+
+    # Fea = Fed.dot(Fdb_plus).dot(Fba_plus)
+    # Zi, Zk = stp.solve_tr(Fea, bc_i=s1["bc_i"], bc_k=s4["bc_k"])
+
+
   
     scale = 0.5
     fig, ax = plt.subplots()
