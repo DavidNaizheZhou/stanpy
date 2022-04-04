@@ -399,6 +399,7 @@ def plot_load(ax, *args, **kwargs):
     for i, s in enumerate(args):
         P_array = stp.extract_P_from_beam(**s)
         N_array = stp.extract_N_from_beam(**s)
+        print(N_array)
         l = s["l"]
         xk = xi + l
         yk = yi
@@ -450,10 +451,10 @@ def plot_load(ax, *args, **kwargs):
                         **kwargs,
                     )
 
-        if N_array.shape[0]:
+        if len(N_array.shape)==2:
             # plot_point_load(ax,xi,yi,s["P"][1],s["P"][0]/np.max(p_array))
-            for i in range(P_array.shape[0]):
-                if P_array[i][0] > 0:
+            for i in range(N_array.shape[0]):
+                if N_array[i][0] > 0:
                     plot_point_load_H(
                         ax,
                         xi + l,
@@ -463,7 +464,29 @@ def plot_load(ax, *args, **kwargs):
                         dy_N=dy_N,
                         **kwargs,
                     )
-                elif P_array[i][0] < 0:
+                elif N_array[i][0] < 0:
+                    plot_point_load_H(
+                        ax,
+                        xi + l,
+                        0,
+                        N_array[i] / 4 * N_scale,
+                        dx_N=dx_N,
+                        dy_N=dy_N,
+                        **kwargs,
+                    )
+        elif len(N_array.shape)==1:
+            for i in range(N_array.shape[0]):
+                if N_array[i] > 0:
+                    plot_point_load_H(
+                        ax,
+                        xi + l,
+                        0,
+                        N_array[i] / 4 * N_scale,
+                        dx_N=dx_N,
+                        dy_N=dy_N,
+                        **kwargs,
+                    )
+                elif N_array[i] < 0:
                     plot_point_load_H(
                         ax,
                         xi + l,

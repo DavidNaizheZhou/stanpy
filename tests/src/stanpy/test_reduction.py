@@ -21,10 +21,9 @@ def test_multiple_w0():
     s = [s1, s2, s3, s4]
 
     x = np.linspace(0,4*l,5)
-
     Zi, Zk = stp.tr_solver(*s)
     Fx = stp.tr(*s, x=x)
-    Zx = Fx.dot(Zi).round(10)
+    Zx = Fx.dot(Zi)
 
     path = os.path.join(dir_path, "reduction_method_npz", "test_multiple_w0.npz")
     # np.savez_compressed(path, Fx=Fx, Zx=Zx)
@@ -241,5 +240,35 @@ def test_large_system_II():
     # ax.axis('off')
     # plt.show()
 
+def empty():
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    EI = 32000 # kNm²
+    GA = 20000 # kN
+    l = 6 # m
+    q = 4 # kN/m
+    P = 1500 # kN
+    H = 10 # kN
+
+    fixed = {"w":0, "phi":0}
+    hinged = {"w":0, "M":0, "H":0}
+
+    s = {"EI":EI, "GA":GA, "l":l, "q":q, "w_0":0.03,"N":(-P ),"P1":(H, l/2),"P2":(H, l/3),"P3":(H, 2*l/3), "bc_i":fixed, "bc_k":hinged}
+    fig, ax = plt.subplots()
+    stp.plot_system(ax, s)
+    stp.plot_load(ax, s)
+    stp.plot_w_0(ax, s, scale=0.4, dy=-0.2)
+    ax.set_ylim(-1,1)
+    plt.show()
+    x = np
+
+    Zi, Zk = stp.tr_solver(s)
+    Fxx = stp.tr(s)
+    Zx = Fxx.dot(Zi)
+
+    print(Zx)
+
 if __name__=="__main__":
-    test_large_system_II()
+    # test_large_system_II()
+    empty()
