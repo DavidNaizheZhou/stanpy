@@ -399,7 +399,6 @@ def plot_load(ax, *args, **kwargs):
     for i, s in enumerate(args):
         P_array = stp.extract_P_from_beam(**s)
         N_array = stp.extract_N_from_beam(**s)
-        print(N_array)
         l = s["l"]
         xk = xi + l
         yk = yi
