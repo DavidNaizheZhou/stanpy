@@ -94,10 +94,34 @@ for beams with non-constant crossections :cite:p:`1993:rubin`:
     l = 4  # m
     hx = ha + (hc - hb) / l * x
 
-    cs_props = stp.cs(b=b, h=ha)
+    cs_props = stp.cs(b=b, h=hx)
     s = {"E": E, "cs": cs_props, "l": l}
     bj = stp.bj(x=[-1,0,2,3,4],**s)
     print(bj)
+
+load_integral(x)
+-----
+.. automodule:: stanpy
+    :members: load_integral
+
+.. jupyter-execute::
+
+    import sympy as sym
+    import stanpy as stp
+
+    x = sym.Symbol("x")
+    E = 32000  # kN/m2
+    b = 0.2  # m
+    ha = hb = 0.3  # m
+    hc = 0.4  # m
+    l = 4  # m
+    q = 5 # kN/m
+    hx = ha + (hc - hb) / l * x
+
+    cs_props = stp.cs(b=b, h=hx)
+    s = {"E": E, "cs": cs_props, "l": l, "q":q}
+    li = stp.load_integral(x=[-1,0,2,3,4],**s)
+    print(li)
 
 tr(x)
 -----

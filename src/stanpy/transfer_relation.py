@@ -813,6 +813,47 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
 
 
 def load_integral(**s):
+    """calculates the load integrals from :cite:t:`1993:rubin`
+
+    :param x: positions where to calculate the load integrals - when empty then x is set to length l, defaults to np.array([])
+    :type x: np.ndarray, optional
+    :param return_all: return aj, bj, masks for faster computation, defaults to False
+    :type return_all: bool, optional
+    :return: load integrals
+    :rtype: `np.ndarray <https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html>`__
+
+    :param \**s:
+        see below
+
+    :Keyword Arguments:
+        * *EI* or *E* and *I* (``float``) --
+          Bending stiffness
+        * *GA* or *G* and *A* (``float``), defaults to np.inf  --
+          Shear stiffness
+        * *N* (``float``) , defaults to 0 --
+          normal Force (compression - negative)
+        * *q* (``float``) , defaults to 0 --
+          load distribution see :eq:`q_j_hat`, multiple inputs possible
+        * *w_0* (``float``) , defaults to 0 --
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
+        * *psi_0* (``float``) , defaults to 0 --
+          initial deformation see :eq:`w_V`, :eq:`q_j_hat`
+        * *m_0* (``sympy.polynomial``) , defaults to 0 --
+          active moment dist :math:`m`
+        * *kappa_0* (``sympy.polynomial``) , defaults to 0 --
+          active curvature polynomial :math:`\kappa^e`, multiple inputs possible
+        * *q_d* (``tuple``) , defaults to (0,0) --
+          :math:`q_\Delta` load distribution (magnitude, position0, position1), multiple inputs possible
+        * *P* (``tuple``) , defaults to (0,0) --
+          :math:`P` pointload (magnitude, position), multiple inputs possible
+        * *M_e* (``tuple``) , defaults to (0,0) --
+          :math:`M^e` active Moment (magnitude, position), multiple inputs possible
+        * *phi_e* (``tuple``) , defaults to (0,0) --
+          :math:`\\varphi^e` active angle of rotation (magnitude, position), multiple inputs possible
+        * *W_e* (``tuple``) , defaults to (0,0) --
+          :math:`W^e` active displacement (magnitude, position), multiple inputs possible
+    """
+    
     EI, GA = load_material_parameters(**s)
     load_integral = None
     if isinstance(EI, (float, int)):
@@ -1002,7 +1043,7 @@ def tr(
     *args,
     x: np.ndarray = np.array([]),
 ):
-    """calculates the transferralation for one or more input dictionarys
+    """calculates the transfer relation for one or more input dictionarys
 
     :param x: _description_, defaults to np.array([])
     :type x: np.ndarray, optional

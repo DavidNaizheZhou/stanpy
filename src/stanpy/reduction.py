@@ -448,6 +448,7 @@ if __name__ == "__main__":
     np.set_printoptions(precision=6, threshold=5000)
     import matplotlib.pyplot as plt
     import stanpy as stp
+    import sympy as sym
 
     EI = 32000  # kN/m2
     l = 3  # m
@@ -474,6 +475,33 @@ if __name__ == "__main__":
     Zi, Zk = stp.tr_solver(*s)
     Fx = stp.tr(*s, x=x)
     Zx = Fx.dot(Zi).round(10)
+
+    li = stp.load_integral(**s1, x=[1,2,3])
+
+    E = 3e7 # kN/m2
+    l1 = 4 # m
+    l2 = 3 # m
+    q = 10 # kN/m
+
+    b = 0.2 # m
+    ha = hb = 0.3 # m
+    hc = 0.4 # m 
+    xs = sym.symbols("x")
+    hx = hb+(hc-hb)/l2*xs
+    cs1 = stp.cs(b=b, h=ha)
+    cs2 = stp.cs(b=b, h=hx)
+
+    fixed = {"w":0, "phi":0}
+    hinged = {"w":0, "M":0, "H":0}
+
+    x = np.linspace(0,l,500)
+
+    s1 = {"E":E, "cs":cs1, "l":l1, "q":q, "bc_i":hinged}
+    s2 = {"E":E, "cs":cs2, "l":l2, "q":q, "bc_k":fixed}
+
+    s = [s1, s2]
+
+    x = np.linspace(0, l1+l2, 1000)
 
     # Fba_plus, Ab = stp.tr_plus2(s1)
     # Fdb_plus, Ad = stp.tr_plus2([s2,s3])

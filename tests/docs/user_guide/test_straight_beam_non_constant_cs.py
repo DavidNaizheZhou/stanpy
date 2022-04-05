@@ -166,6 +166,7 @@ def test_ex02():
     np.testing.assert_allclose(signif(F_da, 5), F_dc_sol)
     np.testing.assert_allclose(signif(Fxa[-1], 5), F_dc_sol)
     Za, Zd = stp.solve_tr(Fxa[-1], bc_i=s1["bc_i"], bc_k=s3["bc_k"])
+    Za, Zd = stp.tr_solver(s1, s2, s3)
     Z_x = Fxa.dot(Za).round(10)
 
     np.testing.assert_allclose(signif(Z_x[-1], 5), signif(Zd, 5))

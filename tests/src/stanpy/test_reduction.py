@@ -32,7 +32,7 @@ def test_multiple_w0():
     Fx_test = npz["Fx"]
 
     np.testing.assert_allclose(Fx, Fx_test,rtol=1e-5)
-    np.testing.assert_allclose(Zx, Zx_test,rtol=1e-5)
+    np.testing.assert_allclose(Zx.round(10), Zx_test,rtol=1e-5)
 
 def test_multiple_w0_M0():
 
