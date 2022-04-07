@@ -144,10 +144,10 @@ def plot_beam(ax, xi, yi, xk, yk, **kwargs):
             (xi, xk),
             (yi, yk),
             c=c,
-            lw=kwargs.get("lw", 2),
-            fillstyle=kwargs.get("fillstyle", "none"),
-            zorder=kwargs.get("zorder", 1),
-            linestyle=kwargs.get("linestyle", "-"),
+            lw=kwargs.pop("lw", 2),
+            fillstyle=kwargs.pop("fillstyle", "none"),
+            zorder=kwargs.pop("zorder", 1),
+            linestyle=kwargs.pop("linestyle", "-"),
             **kwargs
         )
         if df:
