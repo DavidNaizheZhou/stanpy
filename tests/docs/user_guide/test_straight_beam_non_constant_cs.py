@@ -108,8 +108,8 @@ def test_ex02():
 
     np.set_printoptions(precision=6)
 
-    np.testing.assert_allclose(cs_props1["I_y"], cs_props2["I_y"](0))
-    np.testing.assert_allclose(cs_props2["I_y"](l2), cs_props3["I_y"](0))
+    np.testing.assert_allclose(float(cs_props1["I_y"]), float(cs_props2["I_y"](0)))
+    np.testing.assert_allclose(float(cs_props2["I_y"](l2)), float(cs_props3["I_y"](0)))
 
     x_annotate = np.cumsum(np.array([0, l1, l2, l3]))
     x = np.linspace(0, l1 + l2 + l3, 500)
@@ -174,4 +174,4 @@ def test_ex02():
 
 
 if __name__ == "__main__":
-    test_ex01()
+    test_ex02()

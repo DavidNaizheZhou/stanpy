@@ -4,7 +4,11 @@ import numpy as np
 import sympy as sp
 from scipy.interpolate import approximate_taylor_polynomial
 import pprint
-
+from numpy.polynomial import polyutils as pu
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV
 
 class cs_dict(dict):
     def __init__(self, *args, **kwargs):
@@ -14,11 +18,18 @@ class cs_dict(dict):
     def __str__(self):
         return pprint.pformat(self)
 
+def PolynomialRegression(degree=2, **kwargs):
+    return make_pipeline(PolynomialFeatures(degree), LinearRegression(**kwargs))
 
 def I_fun_taylor(Ix, deg):
     Ix_fun = sp.lambdify(sp.Symbol("x"), Ix)
     Ix_fun_taylor = approximate_taylor_polynomial(Ix_fun, 0, deg, 1)
     return Ix_fun_taylor
+
+def I_fun(Ix, pow_series_trunc):
+    poly = sp.poly(sp.fps(sp.N(Ix)).truncate(pow_series_trunc).removeO(), sp.Symbol("x"))
+    Ix_fun = np.poly1d(poly.all_coeffs())
+    return Ix_fun
 
 
 def _is_instance_sympy(param):
@@ -37,6 +48,8 @@ def cs_old(**kwargs):
 
     elif b != None and h != None:
         cs_dict["Iy"] = b * h**3 / 12
+        cs_dict["h"] = h
+        cs_dict["b"] = b
         cs_dict["Iz"] = b**3 * h / 12
         cs_dict["A"] = b * h
         cs_dict["zs"] = h / 2
@@ -81,16 +94,22 @@ def cs_params_vec(vb, vh, vzsi, vysi):
 
 
 def cs(**kwargs):
+    """_summary_
+
+    :raises Exception: _description_
+    :raises Exception: _description_
+    :return: _description_
+    :rtype: _type_
+    """
     NoneType = type(None)
 
     b = kwargs.get("b")
     h = kwargs.get("h")
     zsi = kwargs.get("z_si", None)
     ysi = kwargs.get("y_si", None)
-    poly_deg = kwargs.get("poly_deg", 3)
-    poly_range = kwargs.get("poly_range", 12)
+    poly_range = kwargs.get("l", 10)
     validate = kwargs.get("validate", True)
-    development_mode = kwargs.get("development_mode", False)
+    pow_series_trunc = kwargs.get("pow_series_trunc", 6) 
 
     cs_params = {}
 
@@ -104,6 +123,9 @@ def cs(**kwargs):
         cs_params["y_s"] = b / 2
         cs_params["I_y"] = b * h**3 / 12
         cs_params["I_z"] = b**3 * h / 12
+
+        # todo: if sympy poly convert to numpy poly1d
+
 
     elif (
         isinstance(b, np.ndarray)
@@ -144,28 +166,33 @@ def cs(**kwargs):
 
     # convert symbolic expressions to poly
     if isinstance(cs_params["I_y"], (sp.core.mul.Mul, sp.core.add.Add)):
-        poly = I_fun_taylor(cs_params["I_y"], poly_deg)
+
+        poly = I_fun(cs_params["I_y"].expand(), pow_series_trunc)
+        
         if validate:
-            lam = sp.lambdify(sp.Symbol("x"), cs_params["I_y"])
+            lam = sp.lambdify(sp.Symbol("x"), cs_params["I_y"].expand())
+            test = np.poly1d(np.poly(lam(np.linspace(0,6,100))))
             xvals = np.linspace(0, poly_range, 100)
             if np.max(np.abs(lam(xvals) - poly(xvals))) > 1e-9:
                 raise Exception(
-                    "deviation of taylor polynomial to large - increase poly_deg (default:3) and set a proper poly_range"
+                    "deviation of taylor polynomial to large - increase power series truncation current pow_series_trunc={} and set a the actual beam length l current l={}".format(pow_series_trunc, poly_range)
                 )
         cs_params["I_y"] = poly
         cs_params["eta_y"] = np.flip(poly.c / poly(0))  # (todo) Ref - Stahlbauhandbuch P117 - Rubin
 
     if isinstance(cs_params["I_z"], (sp.core.mul.Mul, sp.core.add.Add)):
-        poly = I_fun_taylor(cs_params["I_z"], poly_deg)
+        poly = I_fun(cs_params["I_z"].expand(), pow_series_trunc)
         if validate:
-            lam = sp.lambdify(sp.Symbol("x"), cs_params["I_z"])
+            lam = sp.lambdify(sp.Symbol("x"), cs_params["I_z"].expand())
             xvals = np.linspace(0, poly_range, 100)
             if np.max(np.abs(lam(xvals) - poly(xvals))) > 1e-9:
                 raise Exception(
-                    "deviation of taylor polynomial to large - increase poly_deg (default:3) and set a proper poly_range"
+                    "deviation of taylor polynomial to large - increase pow_series_trunc={} and set a beam length l={}".format(pow_series_trunc, poly_range)
                 )
         cs_params["I_z"] = poly
         cs_params["eta_z"] = np.flip(poly.c / poly(0))  # (todo) Ref - Stahlbauhandbuch P117 - Rubin
         # cs_params["gamma_y"]  = np.flip((cs_params["Iy"]/cs_params["Iy"](0)*h.as_poly()(0)/h).as_poly().coeffs())
 
+    cs_params["h_render"] = np.sum(h)
+    cs_params["b_render"] = np.sum(b)
     return cs_dict(cs_params)

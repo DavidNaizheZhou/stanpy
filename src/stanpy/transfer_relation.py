@@ -504,7 +504,7 @@ def calc_load_integral_R_poly(
     if P_array.shape[0] > 0:
         for i in range(P_array.shape[0]):
             maskP = _load_bj_x_mask(x_loads, x_P[:, i])
-            load_integrals_R[:, 3] += -aj[maskP, 0] * P[0]
+            load_integrals_R[:, 3] += -aj[maskP, 0] * P_array[i, 0]
 
     if "q_delta" in index_dict.keys():
         index_b_s = index_dict["q_delta"][0] + x.size
@@ -1471,9 +1471,9 @@ def calc_load_integral_Q_poly(
     elif isinstance(EI, (np.poly1d)):
         EI_poly = EI
         EI0 = EI(0)
+    
     # load all loads
     q_delta = s.get("q_delta", (0, 0, 0))
-    P = s.get("P", 0)
 
     M_e = s.get("M_e", (0, 0))
     phi_e = s.get("phi_e", (0, 0))
@@ -1580,12 +1580,12 @@ def calc_load_integral_Q_poly(
         for i in range(P_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_P[:, i])
             EI_star = EI_poly(x)
-            P_vec[:, 0] = bj[mask, 0, 3] / EI_star * P[0]
-            P_vec[:, 1] = bj[mask, 1, 3] / EI_star * P[0]
-            P_vec[:, 2] = -aj[mask, 1] * P[0]
-            P_vec[:, 3] = -aj[mask, 0] * P[0]
+            P_vec[:, 0] = bj[mask, 0, 3] / EI_star * P_array[i, 0]
+            P_vec[:, 1] = bj[mask, 1, 3] / EI_star * P_array[i, 0]
+            P_vec[:, 2] = -aj[mask, 1] * P_array[i, 0]
+            P_vec[:, 3] = -aj[mask, 0] * P_array[i, 0]
             P_vec[:, 4] = 0.0
-
+    
     load_integrals_Q = q_hat_vec + m_0_vec + kappe_0_vec + q_delta_vec + P_vec + M_e_vec + phi_e_vec + W_e_vec
 
     N_vec[:, 2:4] = N * load_integrals_Q[:, :2]

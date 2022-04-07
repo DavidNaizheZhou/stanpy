@@ -26,6 +26,7 @@ from matplotlib.patches import PathPatch
 from matplotlib.patches import Rectangle
 from matplotlib.markers import MarkerStyle
 from matplotlib.path import Path
+from matplotlib.colors import CSS4_COLORS, to_rgb
 from PIL import Image
 
 import numpy as np
@@ -110,27 +111,58 @@ def watermark(ax, watermark_pos=4):
 
 def plot_beam(ax, xi, yi, xk, yk, **kwargs):
     df = kwargs.pop("df", True)  # definitionsfaser
-    ax.plot(
-        (xi, xk),
-        (yi, yk),
-        c=kwargs.pop("c", "black"),
-        lw=kwargs.pop("lw", 2),
-        fillstyle=kwargs.pop("fillstyle", "none"),
-        zorder=kwargs.pop("zorder", 1),
-        linestyle=kwargs.pop("linestyle", "-"),
-        **kwargs,
-    )
-    if df:
-        ax.scatter(
-            [xi + np.abs(xi - xk) / 2],
-            [yi],
-            marker=definitionsfaser,
-            s=20**2,
-            edgecolors=kwargs.pop("c", "black"),
-            facecolors=kwargs.pop("c", "black"),
-            zorder=2,
+    c = kwargs.pop("c", "black")
+    lw = kwargs.pop("lw", 1)
+    s = kwargs.pop("s", {})
+    alpha = kwargs.pop("alpha", 1)
+    render = kwargs.pop("render", False)
+    facecolor = kwargs.pop("facecolor", "black")
+    render_scale = kwargs.pop("render_scale", 1)
+    color = to_rgb(CSS4_COLORS[str(facecolor)])
+    if "cs" in s.keys() and render==True:
+        if isinstance(s["cs"]["h_render"], (float, int)):
+            hx = np.poly1d(np.array([s["cs"]["h_render"]]))
+        else:
+            hx = np.poly1d(sym.poly(s["cs"]["h_render"]).coeffs())
+        l = np.abs(xi-xk)
+        ax.plot(
+            (xi, xk),
+            (yi, yk),
+            c=c,
+            lw=kwargs.pop("lw", 1),
+            fillstyle=kwargs.pop("fillstyle", "none"),
+            zorder=kwargs.pop("zorder", 1),
+            linestyle=kwargs.pop("linestyle", ":"),
             **kwargs,
         )
+        x = np.linspace(xi, xk, 10)
+        # colors = np.array([[,[(1.0, 0., 0., 0.5)]]])
+        h_render = np.array(hx(x-xi), dtype=float)/2*render_scale
+        ax.fill_between(x=x, y1=h_render, y2=-h_render, edgecolor=c, facecolor=np.array([color[0], color[1], color[2], alpha]), lw=lw, zorder=-1)
+    else:
+        ax.plot(
+            (xi, xk),
+            (yi, yk),
+            c=c,
+            lw=kwargs.get("lw", 2),
+            fillstyle=kwargs.get("fillstyle", "none"),
+            zorder=kwargs.get("zorder", 1),
+            linestyle=kwargs.get("linestyle", "-"),
+            **kwargs
+        )
+        if df:
+            ax.scatter(
+                [xi + np.abs(xi - xk) / 2],
+                [yi],
+                marker=definitionsfaser,
+                s=20**2,
+                edgecolors=c,
+                facecolor=c,
+                zorder=2,
+                **kwargs,
+            )
+
+
 
 
 def plot_roller_support(ax, x, y, **kwargs):
@@ -327,13 +359,15 @@ def plot_system(ax, *args, **kwargs):
     hinge = kwargs.pop("hinge", True)
     watermark_pos = kwargs.pop("watermark_pos", 4)
     plot_watermark = kwargs.pop("watermark", False)
+    facecolor = kwargs.pop("facecolor", "white")
+    alpha = kwargs.pop("alpha", 1)
     size = kwargs.pop("s", 30)
     for s in args:
         if "l" in s.keys():
             l: float = s["l"]
             xk = xi + l
             yk = yi
-            plot_beam(ax, xi, yi, xk, yk, **kwargs)
+            plot_beam(ax, xi, yi, xk, yk, s=s, facecolor=facecolor, alpha=alpha, **kwargs)
         if support:
             if "bc_i" in s.keys():
                 if all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w", "M", "H"]]):
@@ -385,6 +419,7 @@ def plot_load(ax, *args, **kwargs):
     P_scale = kwargs.pop("P_scale", 1)
     N_scale = kwargs.pop("N_scale", 1)
     q_scale = kwargs.pop("q_scale", 0.5)
+    render_scale = kwargs.pop("render_scale", 1)
     q_linspace = kwargs.pop("q_linspace", 10)
 
     offset0_positiv = offset_positiv = copy.copy(kwargs.pop("offset", 0.1))

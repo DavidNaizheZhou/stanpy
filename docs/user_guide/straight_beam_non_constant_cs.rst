@@ -38,7 +38,7 @@ EX01-01 (problem)
     s = [s1,s2]
 
     fig, ax = plt.subplots(figsize=(12, 5))
-    stp.plot_system(ax, *s)
+    stp.plot_system(ax, *s, render=True, facecolor="gray", alpha=0.5, render_scale=0.3)
     stp.plot_load(ax, *s)
     ax.grid(linestyle=":")
     ax.set_axisbelow(True)
@@ -114,7 +114,7 @@ EX02-01 (problem)
 .. jupyter-execute::
 
     import numpy as np
-    import sympy as sp 
+    import sympy as sym
     import matplotlib.pyplot as plt
     import stanpy as stp
 
@@ -130,10 +130,6 @@ EX02-01 (problem)
     q = 3.04  # kN/m
     P = 9.96  # kN
     Ag = b * t
-
-EX02-02 (solution) 
-------------------
-.. jupyter-execute::
 
     x_sym = sym.Symbol("x")
 
@@ -155,6 +151,18 @@ EX02-02 (solution)
     s3 = {"E": E, "cs": cs_props3, "q": q, "l": l3, "bc_k": {"w": 0, "phi": 0}}
 
     s = [s1, s2, s3]
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    stp.plot_system(ax, *s, render=True, facecolor="gray", alpha=0.5, render_scale=0.3)
+    stp.plot_load(ax, *s)
+    ax.grid(linestyle=":")
+    ax.set_axisbelow(True)
+    ax.set_ylim(-0.75, 1.0)
+    plt.show()
+
+EX02-02 (solution) 
+------------------
+.. jupyter-execute::
 
     dx = 1e-10
     x_annotate = np.cumsum(np.array([0, l1, l2, l3]))
