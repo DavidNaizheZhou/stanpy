@@ -53,6 +53,7 @@ def gamma_K_function(**s):
 
 
 def convert_poly(function):
+    # solve with numpy poly1d
     if isinstance(function, sp.core.add.Add) or isinstance(function, sp.core.mul.Mul):
         deg = sp.degree(function)
         a_poly = 0
@@ -65,6 +66,8 @@ def convert_poly(function):
 
         dict_sol = sp.solve(a_poly - function_poly, q)
         sol = np.array([dict_sol[key] for key in q])
+        print(sol)
+
     elif isinstance(function, np.ndarray):
         sol = function * factorial(np.arange(function.size, 0, -1))
     elif isinstance(function, np.poly1d):
@@ -1472,13 +1475,6 @@ def calc_load_integral_Q_poly(
         EI_poly = EI
         EI0 = EI(0)
     
-    # load all loads
-    q_delta = s.get("q_delta", (0, 0, 0))
-
-    M_e = s.get("M_e", (0, 0))
-    phi_e = s.get("phi_e", (0, 0))
-    W_e = s.get("W_e", (0, 0))
-
     if wv_j == None:
         wv = convert_psi0_w0_to_wv(**s)
         wv_j = convert_poly_wv(wv)
