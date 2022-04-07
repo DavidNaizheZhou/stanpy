@@ -157,4 +157,5 @@ def test_curvature_force():
     plt.show()
 
 if __name__ == "__main__":
-    test_curvature_force()
+    # test_curvature_force()
+    test_load_integral_poly_compare_q_with_qd()

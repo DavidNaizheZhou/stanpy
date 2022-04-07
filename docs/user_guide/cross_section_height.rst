@@ -19,14 +19,16 @@ EX01 Rechtecksquerschnitt
 
     x = sym.Symbol("x")
     l = 4  # m
+    E = 2.1e8
     b, ha, hb = 0.2, 0.3, 0.4  # m
     hx = ha + (hb - ha) / l * x  # m
+    cs = stp.cs(b=b, h=hx)
 
-    cs_props = stp.cs(b=b, h=hx)
+    s = {"E": E, "cs": cs, "q": 10, "l": l, "bc_i": {"w": 0, "M": 0, "H": 0}, "bc_k": {"w": 0, "phi": 0}}
 
-    print(cs_props)    
-    print("I_y(0) = ", cs_props["I_y"](0))    
-    print("I_y(l) = ", cs_props["I_y"](l))    
+    print(cs)
+    print("I_y(0) = ", cs["I_y"](0))
+    print("I_y(l) = ", cs["I_y"](l))
 
     offset = 0.2
     fig, ax = plt.subplots()
@@ -35,6 +37,13 @@ EX01 Rechtecksquerschnitt
 
     ax.set_xlim(-offset, b + offset)
     ax.set_ylim(-offset, float(hx.subs(x, l)) + offset)
+    ax.grid(linestyle=":")
+    ax.axis('equal')
+
+    plt.show()
+
+    fig, ax = plt.subplots()
+    stp.plot_system(ax, s, render=True, facecolor="gray", alpha=0.5, render_scale=0.4)
     ax.grid(linestyle=":")
     ax.axis('equal')
 

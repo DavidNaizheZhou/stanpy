@@ -455,7 +455,7 @@ def calc_load_integral_R_poly(
     x = check_and_convert_input_array(x, **s)
 
     if isinstance(EI, sp.polys.polytools.Poly):
-        EI_poly = np.poly1d(EI.coeffs())
+        EI_poly = np.poly1d(EI.all_coeffs(sym.Symbol("x")))
         EI0 = EI_poly(0)
 
     elif isinstance(EI, (float, int)):
@@ -1530,9 +1530,8 @@ def calc_load_integral_Q_poly(
         for i in range(qd_array.shape[0]):
             mask1 = _load_bj_x_mask(x_loads, x_qd1[:, i])
             mask2 = _load_bj_x_mask(x_loads, x_qd2[:, i])
-
-            EI_star = EI_poly(l - x_qd1).flatten()
-            EI_2star = EI_poly(l - x_qd2).flatten()
+            EI_star = float(EI_poly(qd_array[i,1]))
+            EI_2star = float(EI_poly(qd_array[i,2]))
 
             q_delta_vec[:, 0] += (bj[mask1, 0, 4] / EI_star - bj[mask2, 0, 4] / EI_2star) * qd_array[i, 0]
             q_delta_vec[:, 1] += (bj[mask1, 1, 4] / EI_star - bj[mask2, 1, 4] / EI_2star) * qd_array[i, 0]
@@ -1545,7 +1544,7 @@ def calc_load_integral_Q_poly(
     if Me_array.shape[0] > 0:
         for i in range(Me_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_Me[:, i])
-            EI_star = EI_poly(l - x_Me).flatten()
+            EI_star = float(EI_poly(Me_array[i,1]))
             M_e_vec[:, 0] += -bj[mask, 0, 2] / EI_star * Me_array[i, 0]
             M_e_vec[:, 1] += -bj[mask, 1, 2] / EI_star * Me_array[i, 0]
             M_e_vec[:, 2] += aj[mask, 0] * Me_array[i, 0]
@@ -1576,13 +1575,13 @@ def calc_load_integral_Q_poly(
     if P_array.shape[0] > 0:
         for i in range(P_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_P[:, i])
-            EI_star = EI_poly(x_P[:, i]).astype(float)
+            EI_star = float(EI_poly(P_array[i,1]))
             P_vec[:, 0] += bj[mask, 0, 3] / EI_star * P_array[i, 0]
             P_vec[:, 1] += bj[mask, 1, 3] / EI_star * P_array[i, 0]
-            # print(aj[mask, 1])
             P_vec[:, 2] += -aj[mask, 1] * P_array[i, 0]
             P_vec[:, 3] += -aj[mask, 0] * P_array[i, 0]
             P_vec[:, 4] = 0.0
+            
     load_integrals_Q = q_hat_vec + m_0_vec + kappe_0_vec + q_delta_vec + P_vec + M_e_vec + phi_e_vec + W_e_vec
 
     N_vec[:, 2:4] = N * load_integrals_Q[:, :2]

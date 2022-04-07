@@ -363,9 +363,9 @@ def test_ex04():
 
 
 if __name__ == "__main__":
-    pass
+    # pass
     # test_ex03()
-    # test_ex04()
+    test_ex04()
     # test_basics()
     # ex03()
     # ex01_01_step_by_step()

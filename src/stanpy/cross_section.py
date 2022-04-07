@@ -171,7 +171,6 @@ def cs(**kwargs):
         
         if validate:
             lam = sp.lambdify(sp.Symbol("x"), cs_params["I_y"].expand())
-            test = np.poly1d(np.poly(lam(np.linspace(0,6,100))))
             xvals = np.linspace(0, poly_range, 100)
             if np.max(np.abs(lam(xvals) - poly(xvals))) > 1e-9:
                 raise Exception(
