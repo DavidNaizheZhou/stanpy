@@ -66,7 +66,6 @@ def convert_poly(function):
 
         dict_sol = sp.solve(a_poly - function_poly, q)
         sol = np.array([dict_sol[key] for key in q])
-        print(sol)
 
     elif isinstance(function, np.ndarray):
         sol = function * factorial(np.arange(function.size, 0, -1))
@@ -1465,7 +1464,7 @@ def calc_load_integral_Q_poly(
     x = check_and_convert_input_array(x, **s)
 
     if isinstance(EI, sp.polys.polytools.Poly):
-        EI_poly = np.poly1d(EI.coeffs())
+        EI_poly = np.poly1d(EI.all_coeffs(sym.Symbols("x")))
         EI0 = EI_poly(0)
 
     elif isinstance(EI, (float, int)):
@@ -1555,11 +1554,12 @@ def calc_load_integral_Q_poly(
     phie_array = loads_dict["phi_e"][0]
     x_phie = loads_dict["phi_e"][1]
     if phie_array.shape[0] > 0:
-        for i in range(phie_array.shape[0]):
-            mask = _load_bj_x_mask(x_loads, x_phie[:, i])
-            phi_e_vec[:, 0] += -bj[index_b_s :: x_j.size, 0, 1] * phie_array[i, 0]
-            phi_e_vec[:, 1] += -bj[index_b_s :: x_j.size, 1, 1] * phie_array[i, 0]
-            phi_e_vec[:, 2:5] += 0.0
+        print("phi_e: Warning! not implementet yet")
+        # for i in range(phie_array.shape[0]):
+        #     mask = _load_bj_x_mask(x_loads, x_phie[:, i])
+        #     phi_e_vec[:, 0] += -bj[index_b_s :: x_j.size, 0, 1] * phie_array[i, 0]
+        #     phi_e_vec[:, 1] += -bj[index_b_s :: x_j.size, 1, 1] * phie_array[i, 0]
+        #     phi_e_vec[:, 2:5] += 0.0
 
     We_array = loads_dict["W_e"][0]
     x_We = loads_dict["W_e"][1]
@@ -1570,18 +1570,19 @@ def calc_load_integral_Q_poly(
             W_e_vec[:, 1] += -bj[mask, 1, 0] * We_array[i, 0]
             W_e_vec[:, 2:5] += 0.0
 
+
     P_array = loads_dict["P"][0]
     x_P = loads_dict["P"][1]
     if P_array.shape[0] > 0:
         for i in range(P_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_P[:, i])
-            EI_star = EI_poly(x)
-            P_vec[:, 0] = bj[mask, 0, 3] / EI_star * P_array[i, 0]
-            P_vec[:, 1] = bj[mask, 1, 3] / EI_star * P_array[i, 0]
-            P_vec[:, 2] = -aj[mask, 1] * P_array[i, 0]
-            P_vec[:, 3] = -aj[mask, 0] * P_array[i, 0]
+            EI_star = EI_poly(x_P[:, i]).astype(float)
+            P_vec[:, 0] += bj[mask, 0, 3] / EI_star * P_array[i, 0]
+            P_vec[:, 1] += bj[mask, 1, 3] / EI_star * P_array[i, 0]
+            # print(aj[mask, 1])
+            P_vec[:, 2] += -aj[mask, 1] * P_array[i, 0]
+            P_vec[:, 3] += -aj[mask, 0] * P_array[i, 0]
             P_vec[:, 4] = 0.0
-    
     load_integrals_Q = q_hat_vec + m_0_vec + kappe_0_vec + q_delta_vec + P_vec + M_e_vec + phi_e_vec + W_e_vec
 
     N_vec[:, 2:4] = N * load_integrals_Q[:, :2]
@@ -1887,7 +1888,7 @@ def bj_opt2_p119_forloop(
 
     bj[:, 0, :2] = aj[:, :2] + Ka * bj[:, 0, 2:4]
     bj[:, 1, 1] = aj[:, 0] + Ka * bj[:, 1, 3]
-
+    bj[x<0, :, :] = 0
     if return_aj:
         return aj, bj
     else:

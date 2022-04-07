@@ -874,8 +874,8 @@ def plot_M(ax, x: np.ndarray = np.array([]), Mx: np.ndarray = np.array([]), **kw
                     annotation_clip=True,
                 )
         else:
-            mask_plot = x_plot == annotation
-            mask = x == annotation
+            mask_plot = np.array([x_plot == annotation]).flatten()
+            mask = np.array([x == annotation]).flatten()
             if mask.any():
                 # ax.vlines(annotation, 0, np.max(mx_plot[mask_plot]), color=c, zorder=zorder, **kwargs, lw=1)
                 annotation_pos_y = np.max(mx_plot[mask_plot])
