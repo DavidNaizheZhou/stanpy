@@ -127,7 +127,7 @@ def bj_p89(K: float, x: float, j: int):  # brute force
         beta = beta * K * x**2 / s / (s - 1)
         bj = bj + beta
         num_iterations += 1
-        if beta <= np.abs(bj) * 10**-9:
+        if np.abs(beta) <= np.abs(bj) * 10**-9:
             break
     return bj
 
@@ -153,7 +153,7 @@ def bj_struktur_p89(x, n: int = 5, **s):  # brute force
 def bj_opt2_p89(
     x: float = np.array([]),
     n: int = 5,
-    n_iterations: int = 30,
+    n_iterations: int = 100,
     return_aj: bool = False,
     **s,
 ):
@@ -167,8 +167,13 @@ def bj_opt2_p89(
     aj = aj_function_x(x, n)
     beta = K / (j + 2 * t) / (j + 2 * t - 1) * x[:, None, None] ** 2
     beta[:, :, 0] = aj[:, -2:]
-    bn_end = np.sum(np.multiply.accumulate(beta, axis=2), axis=2)  # todo create a Warning if not convergent
+    beta_acc = np.multiply.accumulate(beta, axis=2)
+    bn_end = np.sum(beta_acc, axis=2)
     bn = bj_recursion_p89(K, aj, bn_end)
+    if (~(np.abs(beta_acc[:, :, -1]) <= np.abs(bn_end * 10**-9))).any() == True:
+        raise ValueError(
+            "bj functions do not converge, increase t (current value t={})".format(n_iterations)
+        )  # write own Convergence Error ValueError
 
     bn[x < 0, :] = 0
 
@@ -314,6 +319,7 @@ def calc_load_integral_R(
     x: np.ndarray = np.array([]),
     return_all=False,
     wv_j: object = None,
+    t=50,
     **s,
 ):
     """calculates the load integrals in transversal-force-representation from :cite:t:`1993:rubin`
@@ -378,7 +384,7 @@ def calc_load_integral_R(
     load_j_arrays = calc_loadj_arrays(q_j, wv_j, **s)
 
     # x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
-    load_integrals_Q, aj, bj, x_loads, loads_dict = calc_load_integral_Q(x, return_all=True, **s)
+    load_integrals_Q, aj, bj, x_loads, loads_dict = calc_load_integral_Q(x, return_all=True, t=t, **s)
 
     mask = _load_bj_x_mask(x_loads, x)
     d_R = np.zeros((x.size, 5))
@@ -421,6 +427,7 @@ def calc_load_integral_R_poly(
     return_bj: bool = False,
     return_all: bool = False,
     wv_j: object = None,
+    t=50,
     **s,
 ):
     """_summary_
@@ -490,7 +497,7 @@ def calc_load_integral_R_poly(
     x_j, x_for_bj, index_dict = extract_load_length_index_dict(x, **s)
 
     aj, bj, x_loads, x_P, P_array, load_integrals_Q = calc_load_integral_Q_poly(
-        x, return_all=True, load_j_arrays=load_j_arrays, **s
+        x, return_all=True, load_j_arrays=load_j_arrays, t=t, **s
     )
 
     mask = _load_bj_x_mask(x_loads, x)
@@ -642,7 +649,7 @@ def _load_x_loads_position(x, **s):
     }
 
 
-def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
+def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, t=50, **s):
     """calculates the load integrals in shear-force-representation from :cite:t:`1993:rubin`
 
     :param x: positions where to calculate the load integrals - when empty then x is set to length l, defaults to np.array([])
@@ -710,7 +717,7 @@ def calc_load_integral_Q(x: np.ndarray = np.array([]), return_all=False, **s):
 
     x_loads, loads_dict = _load_x_loads_position(x, **s)
 
-    aj, bj = bj_opt2_p89(x=x_loads, n=max_bj_index, return_aj=True, **s)
+    aj, bj = bj_opt2_p89(x=x_loads, n=max_bj_index, n_iterations=t, return_aj=True, **s)
 
     q_hat_vec = np.zeros((x.size, 5))
     m_0_vec = np.zeros((x.size, 5))
@@ -855,7 +862,7 @@ def load_integral(**s):
         * *W_e* (``tuple``) , defaults to (0,0) --
           :math:`W^e` active displacement (magnitude, position), multiple inputs possible
     """
-    
+
     EI, GA = load_material_parameters(**s)
     load_integral = None
     if isinstance(EI, (float, int)):
@@ -1044,11 +1051,14 @@ def apply_reduction_method(*args):
 def tr(
     *args,
     x: np.ndarray = np.array([]),
+    t: int = 50,
 ):
     """calculates the transfer relation for one or more input dictionarys
 
     :param x: _description_, defaults to np.array([])
     :type x: np.ndarray, optional
+    :param t: _description_, defaults to 50
+    :type t: int, optional
     :return: _description_
     :rtype: _type_
     """
@@ -1062,7 +1072,7 @@ def tr(
     if x.size == 0:
         x = stp.calc_x_system(*args)
 
-    bc_interface =list(filter(None, stp.get_bc_interfaces(*args)))
+    bc_interface = list(filter(None, stp.get_bc_interfaces(*args)))
     if len(bc_interface) == 0:
         tr_R_ends = np.zeros((len(args) + 1, 5, 5))
         tr_R_ends[0, :, :] = np.eye(5, 5)
@@ -1074,18 +1084,18 @@ def tr(
         for i, s in enumerate(args):
             EI, GA = load_material_parameters(**s)
             if isinstance(EI, (float, int)):
-                tr_R_ends[i + 1, :, :] = tr_R(**s).dot(tr_R_ends[i, :, :])
-                tr_R_x[x_mask[i], :, :] = tr_R(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+                tr_R_ends[i + 1, :, :] = tr_R(t=t, **s).dot(tr_R_ends[i, :, :])
+                tr_R_x[x_mask[i], :, :] = tr_R(t=t, x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
             elif isinstance(EI, np.poly1d):
-                tr_R_ends[i + 1, :, :] = tr_R_poly(**s).dot(tr_R_ends[i, :, :])
-                tr_R_x[x_mask[i], :, :] = tr_R_poly(x=x[x_mask[i]] - lengths[i], **s).dot(tr_R_ends[i, :, :])
+                tr_R_ends[i + 1, :, :] = tr_R_poly(t=t, **s).dot(tr_R_ends[i, :, :])
+                tr_R_x[x_mask[i], :, :] = tr_R_poly(x=x[x_mask[i]] - lengths[i], t=t, **s).dot(tr_R_ends[i, :, :])
 
         if x.size == 1:
             tr_R_x = tr_R_x.reshape((5, 5))
 
         return tr_R_x
     else:
-        return stp.tr_red(args, x=x)
+        return stp.tr_red(args, t=t, x=x)
 
 
 def R_to_Q(x: np.ndarray = np.array([]), solution_vector: np.ndarray = np.array([]), *args):
@@ -1113,7 +1123,7 @@ def R_to_Q(x: np.ndarray = np.array([]), solution_vector: np.ndarray = np.array(
     return Q
 
 
-def tr_R(x: np.ndarray = np.array([]), **s):
+def tr_R(x: np.ndarray = np.array([]), t=50, **s):
     """calculates the field matrix in transverse-force-representation from :cite:t:`1993:rubin` see :eq:`field_R_constant`
 
     :param x: positions where to calculate the field matrix - when empty then x is set to length l, defaults to np.array([])
@@ -1166,7 +1176,7 @@ def tr_R(x: np.ndarray = np.array([]), **s):
     gamma, K = gamma_K_function(**s)
     EI, GA = load_material_parameters(**s)
 
-    aj, bj, x_loads, x_P, P_array, load_integrals_R = calc_load_integral_R(x, return_all=True, **s)
+    aj, bj, x_loads, x_P, P_array, load_integrals_R = calc_load_integral_R(x, return_all=True, t=t, **s)
 
     tr = np.zeros((x.size, 5, 5))
     mask = _load_bj_x_mask(x_loads, x)
@@ -1193,6 +1203,7 @@ def tr_R_poly(
     x: np.ndarray = np.array([]),
     eta: np.ndarray = np.array([]),
     gamma: np.ndarray = np.array([]),
+    t=50,
     **s,
 ):
     """_summary_
@@ -1228,7 +1239,7 @@ def tr_R_poly(
 
     # todo repair eta gamma scheme
     # aj, bj = bj_opt2_p119_forloop(K,x,eta=eta, return_aj=True, **s)
-    aj, bj, load_integrals_R, mask = calc_load_integral_R_poly(x, eta=eta, gamma=gamma, return_all=True, **s)
+    aj, bj, load_integrals_R, mask = calc_load_integral_R_poly(x, eta=eta, gamma=gamma, t=t, return_all=True, **s)
     # bj, load_integrals_Q = calc_load_integral_Q(x, return_bj=True,**s)
 
     tr = np.zeros((x.size, 5, 5))
@@ -1389,17 +1400,18 @@ def tr_solver(*s_list):
     :return: _description_
     :rtype: _type_
     """
-    bc_interface =list(filter(None, stp.get_bc_interfaces(*s_list)))
+    bc_interface = list(filter(None, stp.get_bc_interfaces(*s_list)))
     if len(bc_interface) == 0:
         bc = stp.fill_bc_dictionary_slab(*s_list)
         Fxx = stp.tr(*s_list)
-        if Fxx.shape==(5,5):
+        if Fxx.shape == (5, 5):
             Zi, Zk = stp.solve_tr(Fxx, bc_i=bc[0], bc_k=bc[-1])
         else:
             Zi, Zk = stp.solve_tr(Fxx[-1], bc_i=bc[0], bc_k=bc[-1])
     else:
         Zi, Zk = stp.solve_tr_red(s_list)
     return Zi, Zk
+
 
 def solve_tr(Fki, **s):
     indices = np.arange(4)
@@ -1426,6 +1438,7 @@ def calc_load_integral_Q_poly(
     return_all: bool = False,
     wv_j=None,
     load_j_arrays=None,
+    t=50,
     **s,
 ):
     """_summary_
@@ -1473,7 +1486,7 @@ def calc_load_integral_Q_poly(
     elif isinstance(EI, (np.poly1d)):
         EI_poly = EI
         EI0 = EI(0)
-    
+
     if wv_j == None:
         wv = convert_psi0_w0_to_wv(**s)
         wv_j = convert_poly_wv(wv)
@@ -1490,7 +1503,7 @@ def calc_load_integral_Q_poly(
 
     x_loads, loads_dict = _load_x_loads_position(x, **s)
 
-    aj, bj = bj_opt2_p119_forloop(K, x_loads, eta, max_bj_index + 1, return_aj=True, **s)
+    aj, bj = bj_opt2_p119_forloop(K, x_loads, eta, max_bj_index + 1, return_aj=True, n_iterations=t, **s)
 
     q_hat_vec = np.zeros((x.size, 5))
     m_0_vec = np.zeros((x.size, 5))
@@ -1530,8 +1543,8 @@ def calc_load_integral_Q_poly(
         for i in range(qd_array.shape[0]):
             mask1 = _load_bj_x_mask(x_loads, x_qd1[:, i])
             mask2 = _load_bj_x_mask(x_loads, x_qd2[:, i])
-            EI_star = float(EI_poly(qd_array[i,1]))
-            EI_2star = float(EI_poly(qd_array[i,2]))
+            EI_star = float(EI_poly(qd_array[i, 1]))
+            EI_2star = float(EI_poly(qd_array[i, 2]))
 
             q_delta_vec[:, 0] += (bj[mask1, 0, 4] / EI_star - bj[mask2, 0, 4] / EI_2star) * qd_array[i, 0]
             q_delta_vec[:, 1] += (bj[mask1, 1, 4] / EI_star - bj[mask2, 1, 4] / EI_2star) * qd_array[i, 0]
@@ -1544,7 +1557,7 @@ def calc_load_integral_Q_poly(
     if Me_array.shape[0] > 0:
         for i in range(Me_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_Me[:, i])
-            EI_star = float(EI_poly(Me_array[i,1]))
+            EI_star = float(EI_poly(Me_array[i, 1]))
             M_e_vec[:, 0] += -bj[mask, 0, 2] / EI_star * Me_array[i, 0]
             M_e_vec[:, 1] += -bj[mask, 1, 2] / EI_star * Me_array[i, 0]
             M_e_vec[:, 2] += aj[mask, 0] * Me_array[i, 0]
@@ -1569,19 +1582,18 @@ def calc_load_integral_Q_poly(
             W_e_vec[:, 1] += -bj[mask, 1, 0] * We_array[i, 0]
             W_e_vec[:, 2:5] += 0.0
 
-
     P_array = loads_dict["P"][0]
     x_P = loads_dict["P"][1]
     if P_array.shape[0] > 0:
         for i in range(P_array.shape[0]):
             mask = _load_bj_x_mask(x_loads, x_P[:, i])
-            EI_star = float(EI_poly(P_array[i,1]))
+            EI_star = float(EI_poly(P_array[i, 1]))
             P_vec[:, 0] += bj[mask, 0, 3] / EI_star * P_array[i, 0]
             P_vec[:, 1] += bj[mask, 1, 3] / EI_star * P_array[i, 0]
             P_vec[:, 2] += -aj[mask, 1] * P_array[i, 0]
             P_vec[:, 3] += -aj[mask, 0] * P_array[i, 0]
             P_vec[:, 4] = 0.0
-            
+
     load_integrals_Q = q_hat_vec + m_0_vec + kappe_0_vec + q_delta_vec + P_vec + M_e_vec + phi_e_vec + W_e_vec
 
     N_vec[:, 2:4] = N * load_integrals_Q[:, :2]
@@ -1825,7 +1837,6 @@ def bj(x: np.ndarray = np.array([]), n: int = 5, t=50, **s):
     elif x.size == 0:
         x = np.array([l])
     EI, GA = load_material_parameters(**s)
-
     if isinstance(EI, (int, float)):
         bj = bj_opt2_p89(x=x, n=n, n_iterations=t, **s)
     elif isinstance(EI, np.poly1d):
@@ -1845,6 +1856,7 @@ def bj_opt2_p119_forloop(
     n: int = 6,
     n_iterations: int = 50,
     return_aj=False,
+    n_dev=2,
     **s,
 ):
     eta, _ = check_and_convert_eta_gamma(eta, gamma, **s)
@@ -1854,7 +1866,7 @@ def bj_opt2_p119_forloop(
     t = np.arange(1, n_iterations + eta.size)
     s = t + j
 
-    n_array = np.arange(2)
+    n_array = np.arange(n_dev)
     r = np.arange(1, eta.size)
     beta = np.zeros((x.size, n_array.size, j.size, n_iterations + eta.size, eta.size))
     beta[:, :, :, 0, 0] = 1
@@ -1887,7 +1899,18 @@ def bj_opt2_p119_forloop(
 
     bj[:, 0, :2] = aj[:, :2] + Ka * bj[:, 0, 2:4]
     bj[:, 1, 1] = aj[:, 0] + Ka * bj[:, 1, 3]
-    bj[x<0, :, :] = 0
+    bj[x < 0, :, :] = 0
+    conv_test = np.abs(beta[:, :, :, :, 0])
+    conv_test = np.ma.masked_array(conv_test, mask=(conv_test == 1))
+    np.set_printoptions(precision=6, linewidth=500)
+    print(np.min(conv_test, axis=3))
+    print(np.abs(f * 10**-9))
+    print((np.min(conv_test, axis=3) < np.abs(f * 10**-9)))
+    if (~(np.min(conv_test, axis=3) < np.abs(f * 10**-9))).any() == True:  # any test is smaller boundary
+        raise ValueError(
+            "bj functions do not converge, increase t (current value t={})".format(n_iterations)
+        )  # write own Convergence Error ValueError
+
     if return_aj:
         return aj, bj
     else:

@@ -38,6 +38,7 @@ def test_ex01():
     bj4s = stp.bj_p119(K, l2, 4, 1, cs_props2["eta_y"])
 
     bj = stp.bj(x=l2, **s2)
+    print(bj)
     bj_sol = np.array([[3.375, 2.905, 1.991], [1.969, 2.531, 2.344]])
 
     np.testing.assert_allclose(bj[0, 0, 2:5], np.array([bj2, bj3, bj4]))
