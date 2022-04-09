@@ -1903,9 +1903,6 @@ def bj_opt2_p119_forloop(
     conv_test = np.abs(beta[:, :, :, :, 0])
     conv_test = np.ma.masked_array(conv_test, mask=(conv_test == 1))
     np.set_printoptions(precision=6, linewidth=500)
-    print(np.min(conv_test, axis=3))
-    print(np.abs(f * 10**-9))
-    print((np.min(conv_test, axis=3) < np.abs(f * 10**-9)))
     if (~(np.min(conv_test, axis=3) < np.abs(f * 10**-9))).any() == True:  # any test is smaller boundary
         raise ValueError(
             "bj functions do not converge, increase t (current value t={})".format(n_iterations)
