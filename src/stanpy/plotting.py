@@ -14,6 +14,7 @@ __all__ = [
     "plot_w_0",
     "plot_cs",
     "plot_solution",
+    "plot_fachwerk",
 ]
 
 import copy
@@ -109,6 +110,21 @@ def watermark(ax, watermark_pos=4):
     ax.add_artist(ao)
 
 
+def plot_fachwerk(ax, *s_list, **kwargs):
+    hinge_size = kwargs.pop("hinge_size", 22)
+    hinge = kwargs.pop("hinge", True)
+    size = kwargs.pop("s", 30)
+    for s in s_list:
+        xi = s["Xi"][0]
+        yi = s["Xi"][1]
+        xk = s["Xk"][0]
+        yk = s["Xk"][1]
+        plot_beam(ax, xi, yi, xk, yk, **kwargs)
+        plot_hinge(ax, xi, yi)
+        plot_hinge(ax, xk, yk)
+        plot_bc(ax, s, xi, yi, xk, yk, hinge_size, hinge, size)
+
+
 def plot_beam(ax, xi, yi, xk, yk, **kwargs):
     df = kwargs.pop("df", True)  # definitionsfaser
     c = kwargs.pop("c", "black")
@@ -119,12 +135,12 @@ def plot_beam(ax, xi, yi, xk, yk, **kwargs):
     facecolor = kwargs.pop("facecolor", "black")
     render_scale = kwargs.pop("render_scale", 1)
     color = to_rgb(CSS4_COLORS[str(facecolor)])
-    if "cs" in s.keys() and render==True:
+    if "cs" in s.keys() and render == True:
         if isinstance(s["cs"]["h_render"], (float, int)):
             hx = np.poly1d(np.array([s["cs"]["h_render"]]))
         else:
             hx = np.poly1d(sym.poly(s["cs"]["h_render"]).coeffs())
-        l = np.abs(xi-xk)
+        l = np.abs(xi - xk)
         ax.plot(
             (xi, xk),
             (yi, yk),
@@ -137,8 +153,16 @@ def plot_beam(ax, xi, yi, xk, yk, **kwargs):
         )
         x = np.linspace(xi, xk, 10)
         # colors = np.array([[,[(1.0, 0., 0., 0.5)]]])
-        h_render = np.array(hx(x-xi), dtype=float)/2*render_scale
-        ax.fill_between(x=x, y1=h_render, y2=-h_render, edgecolor=c, facecolor=np.array([color[0], color[1], color[2], alpha]), lw=lw, zorder=-1)
+        h_render = np.array(hx(x - xi), dtype=float) / 2 * render_scale
+        ax.fill_between(
+            x=x,
+            y1=h_render,
+            y2=-h_render,
+            edgecolor=c,
+            facecolor=np.array([color[0], color[1], color[2], alpha]),
+            lw=lw,
+            zorder=-1,
+        )
     else:
         ax.plot(
             (xi, xk),
@@ -148,7 +172,7 @@ def plot_beam(ax, xi, yi, xk, yk, **kwargs):
             fillstyle=kwargs.pop("fillstyle", "none"),
             zorder=kwargs.pop("zorder", 1),
             linestyle=kwargs.pop("linestyle", "-"),
-            **kwargs
+            **kwargs,
         )
         if df:
             ax.scatter(
@@ -161,8 +185,6 @@ def plot_beam(ax, xi, yi, xk, yk, **kwargs):
                 zorder=2,
                 **kwargs,
             )
-
-
 
 
 def plot_roller_support(ax, x, y, **kwargs):
@@ -344,6 +366,36 @@ def plot_point_load_H(ax, x, y, magnitude, **kwargs):
 #   ax.scatter([xi[0]+np.abs(xi[0]-xi[1])/2],[yi[0]], marker=definitionsfaser, s=20**2,  edgecolors='black',facecolors='white', zorder=2)
 
 
+def plot_bc(ax, s, xi, yi, xk, yk, hinge_size, hinge, size):
+    if "bc_i" in s.keys():
+        if all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w", "M", "H"]]):
+            plot_roller_support(ax, xi, yi, hinge_size=hinge_size, s=size)
+        elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w", "M"]]):
+            plot_hinged_support(ax, xi, yi, hinge_size=hinge_size, s=size)
+        elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w", "phi"]]):
+            plot_fixed_support(ax, xi, yi, "left", s=size)
+        elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["M", "V"]]):
+            pass
+        elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["w"]]):
+            plot_roller_support_half(ax, xi, yi, hinge_size=hinge_size, s=size)
+        elif all([boundary_condition in s["bc_i"].keys() for boundary_condition in ["M"]]) and hinge:
+            plot_hinge(ax, xi, yi, hinge_size=hinge_size, s=size)
+
+    if "bc_k" in s.keys():
+        if all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["w", "M", "H"]]):
+            plot_roller_support(ax, xk, yk, hinge_size=hinge_size, s=size)
+        elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["w", "M"]]):
+            plot_hinged_support(ax, xk, yk, hinge_size=hinge_size, s=size)
+        elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["w", "phi"]]):
+            plot_fixed_support(ax, xk, yk, "right", s=size)
+        elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["M", "V"]]):
+            pass
+        elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["w"]]):
+            plot_roller_support_half(ax, xk, yk, hinge_size=hinge_size, s=size)
+        elif all([boundary_condition in s["bc_k"].keys() for boundary_condition in ["M"]]) and hinge:
+            plot_hinge(ax, xk, yk, hinge_size=hinge_size, s=size)
+
+
 def plot_system(ax, *args, **kwargs):
     """plotting of the system to the given axis
 
@@ -485,7 +537,7 @@ def plot_load(ax, *args, **kwargs):
                         **kwargs,
                     )
 
-        if len(N_array.shape)==2:
+        if len(N_array.shape) == 2:
             # plot_point_load(ax,xi,yi,s["P"][1],s["P"][0]/np.max(p_array))
             for i in range(N_array.shape[0]):
                 if N_array[i][0] > 0:
@@ -508,7 +560,7 @@ def plot_load(ax, *args, **kwargs):
                         dy_N=dy_N,
                         **kwargs,
                     )
-        elif len(N_array.shape)==1:
+        elif len(N_array.shape) == 1:
             for i in range(N_array.shape[0]):
                 if N_array[i] > 0:
                     plot_point_load_H(
@@ -576,6 +628,7 @@ def plot_load_distribution(ax, x, y, thickness, q_offset=0, **kwargs):
 
 def plot_V(ax, x: np.ndarray = np.array([]), Vx: np.ndarray = np.array([]), **kwargs):
     plot_R(ax=ax, x=x, Rx=Vx, **kwargs)
+
 
 def plot_solution(ax, x: np.ndarray = np.array([]), y: np.ndarray = np.array([]), flip_y=False, **kwargs):
     """Plotting of the solution vector

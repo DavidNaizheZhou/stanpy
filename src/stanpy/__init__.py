@@ -12,3 +12,4 @@ from .reduction import *
 from .utils import *
 from .static import *
 from .helpers import *
+from .fem import *
