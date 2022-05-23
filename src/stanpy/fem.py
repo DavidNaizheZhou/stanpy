@@ -78,7 +78,7 @@ def stiffness_matrix_element_rect(**s):
     )
 
 
-def system_eqation(**s):
+def system_equation(**s):
     a = stp.assembly(s, deg_free_node=2)
     aT = np.transpose(a, axes=(0, 2, 1))
     K_local = stp.stiffness_matrix_element_rect(**s)
@@ -131,11 +131,11 @@ if __name__ == "__main__":
     }
 
     a = stp.assembly(s, deg_free_node=2)
-    K, p = system_eqation(**s)
+    K, p = system_equation(**s)
     q = np.linalg.pinv(K).dot(p).round(10)
     N = interpolation_function_deg4(sym.Symbol("x"), **s)
-    print(N.dot(a[0].dot(q)))
-    print(N.dot(a[1].dot(q)))
-    print(N.dot(a[2].dot(q)))
+    # print(N.dot(a[0].dot(q)))
+    # print(N.dot(a[1].dot(q)))
+    # print(N.dot(a[2].dot(q)))
     # print(N[0].dot(a[0].dot(q)))
     # print()
